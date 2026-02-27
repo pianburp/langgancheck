@@ -1,0 +1,1508 @@
+# GajiGuard — MVP Spec & Implementation Plan
+
+**Malaysian B2C Subscription & BNPL Manager**
+
+> [!IMPORTANT]
+> This is a comprehensive spec covering all 8 deliverables. Review each section and flag anything you want changed before we start building.
+
+---
+
+## 1. Product Requirements Document (PRD)
+
+### 1.1 Target User
+
+| Attribute | Detail |
+|-----------|--------|
+| **Demographics** | Malaysians aged 20–40, middle/low income (RM 2,000–6,000/month) |
+| **Behavior** | Uses 2–8 digital subscriptions (Spotify, Netflix, iQIYI, Disney+) and 1–5 active BNPL plans (Grab PayLater, Atome, SPayLater, hoolah) |
+| **Pain point** | Loses track of when payments are due, surprised by deductions, doesn't know total monthly commitments |
+| **Tech comfort** | Comfortable with smartphone/web apps, uses e-wallets, but not spreadsheet power users |
+| **Language** | English-first UI with Malay-friendly copy (e.g., "Langganan", "Ansuran") |
+
+### 1.2 Core User Journeys
+
+```mermaid
+flowchart TD
+    A[Land on homepage] --> B[Sign up / Login]
+    B --> C[Empty calendar → prompted to add first item]
+    C --> D[Quick-add subscription or BNPL]
+    D --> E[See items on calendar]
+    E --> F[View day details → mark as paid]
+    E --> G[See upcoming sidebar → total RM this month]
+    G --> H{Hit 3-item limit?}
+    H -->|Yes| I[Upgrade prompt → Polar checkout → RM10/month]
+    H -->|No| D
+    I --> J[Unlimited items]
+```
+
+**Journey 1: First-time user adds a subscription**
+1. Sign up with email/password (or Google)
+2. Empty state shows "Add your first subscription" CTA
+3. Opens quick-add sheet → types "Netflix", RM55/month, billing day 15
+4. Calendar populates with Netflix marker on the 15th
+5. Upcoming sidebar shows "Netflix — RM55 — due in 8 days"
+
+**Journey 2: User adds a BNPL installment**
+1. Quick-add → selects "BNPL/Installment" tab
+2. Enters: "iPhone 16 via Atome", RM150/month, 6 installments, started Jan 2025
+3. Calendar shows markers on upcoming due dates; completed installments greyed out
+4. Progress badge shows "3/6 paid"
+
+**Journey 3: User hits free limit → upgrades**
+1. Tries to add 4th item → dialog with upgrade prompt
+2. Clicks "Upgrade to Pro — RM10/month"
+3. Polar checkout overlay → completes payment
+4. Webhook fires → entitlement updated → can now add unlimited items
+
+**Journey 4: Mark as paid**
+1. Taps a due date on calendar → day drawer opens
+2. Sees "Netflix — RM55 — Due today"
+3. Taps "Mark as Paid" → occurrence marked, next due date calculated
+4. Toast: "Nice! Netflix marked as paid ✓"
+
+### 1.3 MVP Scope vs Later Scope
+
+| Feature | MVP ✅ | Later 🔮 |
+|---------|--------|----------|
+| Manual subscription tracking | ✅ | |
+| Manual BNPL tracking | ✅ | |
+| Calendar month view | ✅ | |
+| Upcoming list sidebar | ✅ | |
+| Day details drawer | ✅ | |
+| Mark as paid | ✅ | |
+| Free (3 items) / Pro (unlimited) | ✅ | |
+| Polar checkout + webhooks | ✅ | |
+| Auth (email + Google) | ✅ | |
+| Bank sync / auto-detect | | 🔮 |
+| Multi-currency support | | 🔮 |
+| Notifications (email/push) | | 🔮 |
+| Spending analytics/reports | | 🔮 |
+| Family/shared plans | | 🔮 |
+| Mobile app (PWA or native) | | 🔮 |
+| Bill splitting | | 🔮 |
+| Export data (CSV/PDF) | | 🔮 |
+
+### 1.4 Success Metrics & Retention Hooks
+
+| Metric | Target (30 days) |
+|--------|-------------------|
+| Sign-ups | 500 |
+| D7 retention | 40% |
+| Items added per user | ≥ 3 |
+| Free → Paid conversion | 5–8% |
+| Monthly churn (paid) | < 10% |
+
+**Retention hooks:**
+- **Calendar as habit loop** — users return monthly to mark payments
+- **"Monthly total" guilt/awareness** — shows RM total, motivates tracking
+- **Missed payment indicator** — red badges create urgency to return
+- **Streak counter** (later) — "5 months of on-time payments!"
+
+---
+
+## 2. Data Entry Fields
+
+### 2.1 Subscription Item
+
+| Field | Type | Required | Default | Validation | Example |
+|-------|------|----------|---------|------------|---------|
+| `name` | string | ✅ Must-have | — | 1–100 chars | "Netflix" |
+| `amount` | decimal | ✅ Must-have | — | > 0, max 99999.99 | 54.90 |
+| `currency` | string | ✅ Must-have | `MYR` | ISO 4217 | "MYR" |
+| `billing_cycle` | enum | ✅ Must-have | `monthly` | weekly / monthly / yearly | "monthly" |
+| `billing_day` | int | ✅ Must-have | 1 | 1–31 (clamped to month length) | 15 |
+| `start_date` | date | ✅ Must-have | today | valid date | "2025-01-15" |
+| `category` | enum | Optional | `other` | predefined list | "entertainment" |
+| `notes` | string | Optional | — | max 500 chars | "Family plan, shared" |
+| `color` | string | Optional | auto-assigned | hex color | "#FF6B6B" |
+| `is_active` | boolean | ✅ Must-have | `true` | — | true |
+
+### 2.2 BNPL / Installment Item
+
+| Field | Type | Required | Default | Validation | Example |
+|-------|------|----------|---------|------------|---------|
+| `name` | string | ✅ Must-have | — | 1–100 chars | "iPhone 16 Atome" |
+| `installment_amount` | decimal | ✅ Must-have | — | > 0, max 99999.99 | 150.00 |
+| `total_installments` | int | ✅ Must-have | — | 1–120 | 6 |
+| `currency` | string | ✅ Must-have | `MYR` | ISO 4217 | "MYR" |
+| `billing_cycle` | enum | ✅ Must-have | `monthly` | weekly / biweekly / monthly | "monthly" |
+| `billing_day` | int | ✅ Must-have | 1 | 1–31 | 1 |
+| `start_date` | date | ✅ Must-have | today | valid date | "2025-01-01" |
+| `installments_paid` | int | ✅ Must-have | 0 | 0 ≤ x ≤ total_installments | 3 |
+| `total_amount` | decimal | Optional | auto-calc | computed: installment_amount × total_installments | 900.00 |
+| `category` | enum | Optional | `other` | predefined list | "gadget" |
+| `notes` | string | Optional | — | max 500 chars | "0% interest" |
+| `color` | string | Optional | auto-assigned | hex color | "#4ECDC4" |
+
+### 2.3 Shared Enums
+
+**Categories:**
+`entertainment` · `food` · `transport` · `shopping` · `gadget` · `insurance` · `education` · `health` · `utilities` · `other`
+
+**Billing cycles:**
+`weekly` · `biweekly` · `monthly` · `yearly`
+
+### 2.4 Sensible Defaults
+
+| Setting | Default |
+|---------|---------|
+| Currency | `MYR` (RM) |
+| Timezone | `Asia/Kuala_Lumpur` (UTC+8) |
+| Calendar start day | Monday |
+| Billing cycle | Monthly |
+| Start date | Today |
+
+---
+
+## 3. UX/UI Spec (shadcn/ui)
+
+### 3.1 Layout Architecture
+
+```
+┌──────────────────────────────────────────────────┐
+│  Header: Logo · Navigation · User Menu           │
+├──────────────────────┬───────────────────────────│
+│                      │                           │
+│   Calendar           │   Upcoming Sidebar        │
+│   (Month View)       │   ┌─────────────────────┐ │
+│                      │   │ This Month: RM 580  │ │
+│   ┌──┬──┬──┬──┬──┐  │   ├─────────────────────┤ │
+│   │Mo│Tu│We│Th│Fr│  │   │ 📺 Netflix    RM55  │ │
+│   ├──┼──┼──┼──┼──┤  │   │ 📱 Atome 3/6  RM150 │ │
+│   │  │  │15│  │  │  │   │ 🎵 Spotify    RM17  │ │
+│   │  │  │🔴│  │  │  │   │ ...                  │ │
+│   └──┴──┴──┴──┴──┘  │   └─────────────────────┘ │
+│                      │                           │
+│   [+ Quick Add]      │                           │
+│                      │                           │
+└──────────────────────┴───────────────────────────┘
+```
+
+**Desktop:** 2-column layout (calendar ~65%, sidebar ~35%)
+**Mobile:** Single column — calendar on top, upcoming list below, FAB for quick-add
+
+### 3.2 Component Map (shadcn/ui)
+
+| Component | Usage |
+|-----------|-------|
+| `Calendar` | Month view with custom day cells showing payment dots |
+| `Sheet` (right drawer) | Day details drawer + create/edit item form |
+| `Dialog` | Delete confirmation, upgrade prompt |
+| `Card` | Upcoming items in sidebar, item summary cards |
+| `Badge` | Category labels, status (paid/due/overdue), BNPL progress "3/6" |
+| `Tabs` | "Subscription" / "BNPL" toggle in add/edit sheet |
+| `Button` | Primary actions, mark-as-paid, quick-add FAB |
+| `Input` | Text fields (name, amount, notes) |
+| `Select` | Category picker, billing cycle, billing day |
+| `DropdownMenu` | Item actions (edit, pause, delete), user menu |
+| `Toast` (Sonner) | Success/error feedback ("Marked as paid ✓") |
+| `Skeleton` | Loading states for calendar and sidebar |
+| `Avatar` | User profile in header |
+| `Separator` | Visual grouping in sidebar sections |
+| `Progress` | BNPL installment progress bar |
+| `Label` | Form field labels |
+| `Switch` | Toggle active/inactive item |
+| `Popover` | Quick month/year picker for calendar navigation |
+
+### 3.3 Key Screens
+
+#### Calendar Page (Main — `/dashboard`)
+- **Month view** using shadcn `Calendar` with custom `DayContent` rendering:
+  - Colored dots for each item due on that day
+  - Dots: filled = paid, outlined = due, red = overdue
+- **Month navigation**: `< February 2025 >` with `Popover` for quick jump
+- **Summary bar**: "RM 580 due this month · 3 items active"
+- **Quick-add FAB**: Bottom-right floating `Button` → opens `Sheet`
+
+#### Upcoming Sidebar
+- **Monthly total card** at top (glassmorphism/gradient card)
+- **List of upcoming** items sorted by next due date
+- Each item: icon/color dot · name · amount · due date · `Badge` status
+- BNPL items show `Progress` bar (e.g., 3/6)
+
+#### Day Details Drawer (`Sheet`)
+- Opens when clicking a calendar day
+- Shows all items due on that day
+- Each item: name, amount, type badge, "Mark as Paid" `Button`
+- Empty day: "Nothing due on this day 🎉"
+
+#### Add/Edit Item Sheet (`Sheet`)
+- `Tabs`: "Subscription" | "BNPL/Installment"
+- Form fields per type (see section 2)
+- Category `Select` with emoji indicators
+- Color picker (6 preset colors)
+- "Save" primary `Button` + "Cancel" secondary
+
+#### Upgrade Dialog
+- Triggered when user hits 3-item limit
+- Shows: current count, Pro benefits, "RM10/month"
+- "Upgrade Now" `Button` → Polar embedded checkout
+
+### 3.4 States
+
+| State | Implementation |
+|-------|---------------|
+| **Empty** | Illustration + "Add your first subscription or installment" CTA (`Card` with dashed border) |
+| **Loading** | `Skeleton` components for calendar grid + sidebar cards |
+| **Error** | `Toast` (Sonner) with error message, retry option |
+| **Limit reached** | `Dialog` with upgrade prompt when trying to add 4th free item |
+| **No items on day** | "Nothing due today 🎉" in day drawer |
+
+### 3.5 Accessibility Notes
+- All interactive elements have `aria-label`
+- Calendar navigation via keyboard (arrow keys)
+- Color dots are paired with shapes (circle/diamond) for color-blind users
+- Focus traps in `Sheet` and `Dialog`
+- Toast announcements via `aria-live`
+- Min touch target 44×44px on mobile
+- Contrast ratio ≥ 4.5:1 for all text
+
+---
+
+## 4. Database Schema (Neon + Drizzle)
+
+### 4.1 Drizzle Schema
+
+```typescript
+// src/db/schema.ts
+import {
+  pgTable,
+  text,
+  timestamp,
+  boolean,
+  integer,
+  decimal,
+  pgEnum,
+  index,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
+
+// ─── Enums ────────────────────────────────────────
+
+export const itemTypeEnum = pgEnum("item_type", [
+  "subscription",
+  "bnpl",
+]);
+
+export const billingCycleEnum = pgEnum("billing_cycle", [
+  "weekly",
+  "biweekly",
+  "monthly",
+  "yearly",
+]);
+
+export const categoryEnum = pgEnum("category", [
+  "entertainment",
+  "food",
+  "transport",
+  "shopping",
+  "gadget",
+  "insurance",
+  "education",
+  "health",
+  "utilities",
+  "other",
+]);
+
+export const occurrenceStatusEnum = pgEnum("occurrence_status", [
+  "upcoming",
+  "paid",
+  "missed",
+  "skipped",
+]);
+
+export const planTierEnum = pgEnum("plan_tier", ["free", "pro"]);
+
+// ─── Users (Better Auth managed + extended) ───────
+
+export const users = pgTable("users", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  emailVerified: boolean("email_verified").notNull().default(false),
+  image: text("image"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const sessions = pgTable("sessions", {
+  id: text("id").primaryKey(),
+  expiresAt: timestamp("expires_at").notNull(),
+  token: text("token").notNull().unique(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+});
+
+export const accounts = pgTable("accounts", {
+  id: text("id").primaryKey(),
+  accountId: text("account_id").notNull(),
+  providerId: text("provider_id").notNull(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  idToken: text("id_token"),
+  accessTokenExpiresAt: timestamp("access_token_expires_at"),
+  refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
+  scope: text("scope"),
+  password: text("password"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const verifications = pgTable("verifications", {
+  id: text("id").primaryKey(),
+  identifier: text("identifier").notNull(),
+  value: text("value").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// ─── Entitlements / Plans ─────────────────────────
+
+export const userEntitlements = pgTable(
+  "user_entitlements",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    planTier: planTierEnum("plan_tier").notNull().default("free"),
+
+    // Polar subscription data
+    polarCustomerId: text("polar_customer_id"),
+    polarSubscriptionId: text("polar_subscription_id"),
+    polarSubscriptionStatus: text("polar_subscription_status"),
+    currentPeriodEnd: timestamp("current_period_end"),
+
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("user_entitlements_user_id_idx").on(table.userId),
+    index("user_entitlements_polar_customer_idx").on(table.polarCustomerId),
+  ]
+);
+
+// ─── Tracked Items (Subscriptions + BNPL unified) ─
+
+export const items = pgTable(
+  "items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+
+    // Discriminator
+    type: itemTypeEnum("type").notNull(),
+
+    // Common fields
+    name: text("name").notNull(),
+    amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+    currency: text("currency").notNull().default("MYR"),
+    billingCycle: billingCycleEnum("billing_cycle").notNull().default("monthly"),
+    billingDay: integer("billing_day").notNull().default(1),
+    startDate: timestamp("start_date", { mode: "date" }).notNull(),
+    category: categoryEnum("category").notNull().default("other"),
+    color: text("color").notNull().default("#6366F1"),
+    notes: text("notes"),
+    isActive: boolean("is_active").notNull().default(true),
+
+    // BNPL-specific fields (null for subscriptions)
+    totalInstallments: integer("total_installments"),
+    installmentsPaid: integer("installments_paid").default(0),
+
+    // Computed / cached
+    nextDueDate: timestamp("next_due_date", { mode: "date" }),
+
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("items_user_id_idx").on(table.userId),
+    index("items_next_due_date_idx").on(table.nextDueDate),
+    index("items_user_active_idx").on(table.userId, table.isActive),
+  ]
+);
+
+// ─── Payment Occurrences ──────────────────────────
+
+export const occurrences = pgTable(
+  "occurrences",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    itemId: uuid("item_id")
+      .notNull()
+      .references(() => items.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+
+    dueDate: timestamp("due_date", { mode: "date" }).notNull(),
+    amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+    status: occurrenceStatusEnum("status").notNull().default("upcoming"),
+    paidAt: timestamp("paid_at"),
+
+    // For BNPL: which installment number is this?
+    installmentNumber: integer("installment_number"),
+
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("occurrences_item_id_idx").on(table.itemId),
+    index("occurrences_user_due_date_idx").on(table.userId, table.dueDate),
+    index("occurrences_status_idx").on(table.status),
+  ]
+);
+
+// ─── Webhook Events (idempotency + audit) ─────────
+
+export const webhookEvents = pgTable(
+  "webhook_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    eventId: text("event_id").notNull(),
+    eventType: text("event_type").notNull(),
+    payload: text("payload").notNull(), // JSON string
+    processedAt: timestamp("processed_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("webhook_events_event_id_idx").on(table.eventId),
+  ]
+);
+```
+
+### 4.2 Free-Tier Enforcement (3 Active Items)
+
+The limit is enforced **server-side** in the "create item" action:
+
+```typescript
+// src/actions/items.ts
+async function assertCanCreateItem(userId: string) {
+  const entitlement = await db.query.userEntitlements.findFirst({
+    where: eq(userEntitlements.userId, userId),
+  });
+
+  // Pro users bypass limit
+  if (entitlement?.planTier === "pro") return;
+
+  // Count active items for free users
+  const [{ count }] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(items)
+    .where(and(eq(items.userId, userId), eq(items.isActive, true)));
+
+  if (count >= 3) {
+    throw new Error("UPGRADE_REQUIRED");
+  }
+}
+```
+
+The limit is **also enforced client-side** to show the upgrade dialog proactively before opening the add form.
+
+### 4.3 Indexes & Constraints Summary
+
+| Table | Key Indexes |
+|-------|-------------|
+| `items` | `(user_id)`, `(next_due_date)`, `(user_id, is_active)` |
+| `occurrences` | `(item_id)`, `(user_id, due_date)`, `(status)` |
+| `user_entitlements` | unique `(user_id)`, `(polar_customer_id)` |
+| `webhook_events` | unique `(event_id)` — for idempotency |
+
+---
+
+## 5. Business Logic
+
+### 5.1 Recurring Schedules
+
+#### Subscriptions
+- **Recurrence**: `billing_cycle` (weekly / monthly / yearly)
+- **Anchor**: `billing_day` + `start_date`
+- **`next_due_date`**: Cached on the `items` table, updated after each "mark as paid"
+- **No end condition**: Runs until user pauses/cancels
+
+**Calculation:**
+```typescript
+function getNextDueDate(
+  currentDue: Date,
+  cycle: "weekly" | "biweekly" | "monthly" | "yearly"
+): Date {
+  const next = new Date(currentDue);
+  switch (cycle) {
+    case "weekly":
+      next.setDate(next.getDate() + 7);
+      break;
+    case "biweekly":
+      next.setDate(next.getDate() + 14);
+      break;
+    case "monthly":
+      next.setMonth(next.getMonth() + 1);
+      break;
+    case "yearly":
+      next.setFullYear(next.getFullYear() + 1);
+      break;
+  }
+  return next;
+}
+```
+
+#### BNPL / Installments
+- **Fixed count**: `total_installments` (e.g., 6)
+- **Progress**: `installments_paid` incremented on each "mark as paid"
+- **End condition**: `installments_paid >= total_installments` → auto-set `is_active = false`
+- **`next_due_date`**: Calculated same as subscription, but stops when complete
+
+### 5.2 Calendar Event Rendering
+
+For a given month view, we need items due in that month. Two strategies combined:
+
+**Strategy: Hybrid (cached `next_due_date` + generated occurrences)**
+1. When an item is created, generate `occurrences` rows for the next 3 months
+2. A background job (or on-demand) extends occurrences when user navigates to future months
+3. Calendar query:
+
+```typescript
+// Get all occurrences for a month
+const monthOccurrences = await db
+  .select()
+  .from(occurrences)
+  .innerJoin(items, eq(occurrences.itemId, items.id))
+  .where(
+    and(
+      eq(occurrences.userId, userId),
+      gte(occurrences.dueDate, monthStart),
+      lte(occurrences.dueDate, monthEnd)
+    )
+  )
+  .orderBy(asc(occurrences.dueDate));
+```
+
+**MVP simplification:** Generate occurrences on-the-fly for the visible month range at query time (no pre-generation needed). This avoids a background job for MVP.
+
+```typescript
+// src/lib/schedule.ts
+function generateOccurrencesForRange(
+  item: Item,
+  rangeStart: Date,
+  rangeEnd: Date
+): GeneratedOccurrence[] {
+  const occurrences: GeneratedOccurrence[] = [];
+  let currentDate = new Date(item.startDate);
+  let installmentNum = 0;
+
+  while (currentDate <= rangeEnd) {
+    if (currentDate >= rangeStart) {
+      // For BNPL, stop after total installments
+      if (item.type === "bnpl" && installmentNum >= item.totalInstallments!) {
+        break;
+      }
+      occurrences.push({
+        itemId: item.id,
+        dueDate: new Date(currentDate),
+        amount: item.amount,
+        installmentNumber: item.type === "bnpl" ? installmentNum + 1 : null,
+      });
+    }
+    installmentNum++;
+    currentDate = getNextDueDate(currentDate, item.billingCycle);
+  }
+  return occurrences;
+}
+```
+
+### 5.3 "Mark as Paid" Flow
+
+```mermaid
+flowchart TD
+    A[User clicks Mark as Paid] --> B[Server action: markOccurrenceAsPaid]
+    B --> C[Update occurrence: status=paid, paidAt=now]
+    C --> D{Item type?}
+    D -->|Subscription| E[Calculate next_due_date on item]
+    D -->|BNPL| F[Increment installments_paid]
+    F --> G{All paid?}
+    G -->|Yes| H[Set item.is_active = false]
+    G -->|No| E
+    E --> I[Update item.next_due_date]
+    I --> J[Return success + revalidate calendar]
+```
+
+**Server action:**
+```typescript
+async function markAsPaid(occurrenceId: string, userId: string) {
+  return await db.transaction(async (tx) => {
+    // 1. Update occurrence
+    const [occ] = await tx
+      .update(occurrences)
+      .set({ status: "paid", paidAt: new Date() })
+      .where(
+        and(
+          eq(occurrences.id, occurrenceId),
+          eq(occurrences.userId, userId)
+        )
+      )
+      .returning();
+
+    // 2. Get parent item
+    const [item] = await tx
+      .select()
+      .from(items)
+      .where(eq(items.id, occ.itemId));
+
+    // 3. Handle BNPL completion
+    if (item.type === "bnpl") {
+      const newPaid = (item.installmentsPaid ?? 0) + 1;
+      const isComplete = newPaid >= (item.totalInstallments ?? 0);
+
+      await tx.update(items).set({
+        installmentsPaid: newPaid,
+        isActive: !isComplete,
+        nextDueDate: isComplete
+          ? null
+          : getNextDueDate(occ.dueDate, item.billingCycle),
+        updatedAt: new Date(),
+      }).where(eq(items.id, item.id));
+    } else {
+      // 4. Subscription: advance next_due_date
+      await tx.update(items).set({
+        nextDueDate: getNextDueDate(occ.dueDate, item.billingCycle),
+        updatedAt: new Date(),
+      }).where(eq(items.id, item.id));
+    }
+  });
+}
+```
+
+### 5.4 Amount Changes & Pauses/Cancellations
+
+| Action | Behavior |
+|--------|----------|
+| **Edit amount** | Only affects future occurrences. Previous paid records preserved. |
+| **Pause (toggle inactive)** | Set `is_active = false`. Item stays in DB but excluded from calendar rendering and active count. |
+| **Resume** | Set `is_active = true`. Recalculate `next_due_date` from today. |
+| **Cancel/Delete** | Soft-delete: set `is_active = false` + keep data. Hard-delete optional via dropdown. |
+| **Edit billing day** | Recalculate `next_due_date` from the new billing day. |
+
+---
+
+## 6. Payments (Polar)
+
+### 6.1 Plan Product Mapping
+
+| Plan | Polar Product | Price | Interval |
+|------|---------------|-------|----------|
+| Free | — (default) | RM 0 | — |
+| Pro | `gajiguard-pro` product in Polar dashboard | RM 10.00 | Monthly |
+
+Create in Polar Dashboard:
+1. Product name: "GajiGuard Pro"
+2. Price: RM 10.00 / month (MYR currency)
+3. Get the **Product ID** (used in checkout URL)
+
+### 6.2 Checkout Flow
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant App as Next.js App
+    participant Polar as Polar API
+    
+    U->>App: Clicks "Upgrade to Pro"
+    App->>Polar: GET /checkout?productId=xxx&customerEmail=user@email.com
+    Polar-->>U: Embedded checkout overlay
+    U->>Polar: Completes payment
+    Polar->>App: Webhook: subscription.created
+    App->>App: Update user_entitlements → plan_tier = "pro"
+    App-->>U: Redirect to /dashboard?upgraded=true
+```
+
+**Checkout route handler:**
+```typescript
+// src/app/api/checkout/route.ts
+import { Checkout } from "@polar-sh/nextjs";
+
+export const GET = Checkout({
+  accessToken: process.env.POLAR_ACCESS_TOKEN!,
+  successUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?checkout_id={CHECKOUT_ID}&upgraded=true`,
+  server: process.env.NODE_ENV === "production" ? "production" : "sandbox",
+});
+```
+
+**Checkout trigger (client):**
+```typescript
+// In upgrade dialog component
+<a
+  href={`/api/checkout?productId=${POLAR_PRO_PRODUCT_ID}&customerEmail=${user.email}`}
+  data-polar-checkout
+  data-polar-checkout-theme="light"
+>
+  <Button size="lg">
+    Upgrade to Pro — RM10/month
+  </Button>
+</a>
+```
+
+### 6.3 Webhook Handling
+
+```typescript
+// src/app/api/webhook/polar/route.ts
+import { Webhooks } from "@polar-sh/nextjs";
+import { db } from "@/db";
+import { userEntitlements, webhookEvents } from "@/db/schema";
+import { eq } from "drizzle-orm";
+
+export const POST = Webhooks({
+  webhookSecret: process.env.POLAR_WEBHOOK_SECRET!,
+
+  onSubscriptionCreated: async (payload) => {
+    await handleSubscriptionChange(payload, "active");
+  },
+
+  onSubscriptionUpdated: async (payload) => {
+    await handleSubscriptionChange(
+      payload,
+      payload.data.status // "active" | "canceled" | "past_due" etc.
+    );
+  },
+
+  onSubscriptionRevoked: async (payload) => {
+    await handleSubscriptionChange(payload, "revoked");
+  },
+});
+
+async function handleSubscriptionChange(
+  payload: any,
+  status: string
+) {
+  const eventId = payload.data.id + "_" + payload.type;
+
+  // Idempotency check
+  const existing = await db.query.webhookEvents.findFirst({
+    where: eq(webhookEvents.eventId, eventId),
+  });
+  if (existing?.processedAt) return;
+
+  // Store event
+  await db.insert(webhookEvents).values({
+    eventId,
+    eventType: payload.type,
+    payload: JSON.stringify(payload),
+  }).onConflictDoNothing();
+
+  // Resolve user by customer email
+  const customerEmail = payload.data.customer?.email;
+  if (!customerEmail) return;
+
+  const user = await db.query.users.findFirst({
+    where: eq(users.email, customerEmail),
+  });
+  if (!user) return;
+
+  // Determine plan tier
+  const planTier = ["active", "trialing"].includes(status) ? "pro" : "free";
+
+  // Upsert entitlement
+  await db
+    .insert(userEntitlements)
+    .values({
+      userId: user.id,
+      planTier,
+      polarCustomerId: payload.data.customer?.id,
+      polarSubscriptionId: payload.data.id,
+      polarSubscriptionStatus: status,
+      currentPeriodEnd: payload.data.currentPeriodEnd
+        ? new Date(payload.data.currentPeriodEnd)
+        : null,
+    })
+    .onConflictDoUpdate({
+      target: userEntitlements.userId,
+      set: {
+        planTier,
+        polarSubscriptionStatus: status,
+        polarSubscriptionId: payload.data.id,
+        currentPeriodEnd: payload.data.currentPeriodEnd
+          ? new Date(payload.data.currentPeriodEnd)
+          : null,
+        updatedAt: new Date(),
+      },
+    });
+
+  // Mark event processed
+  await db
+    .update(webhookEvents)
+    .set({ processedAt: new Date() })
+    .where(eq(webhookEvents.eventId, eventId));
+}
+```
+
+### 6.4 Security
+
+| Measure | Implementation |
+|---------|---------------|
+| **Signature verification** | `@polar-sh/nextjs` `Webhooks()` handles Standard Webhooks signature validation automatically |
+| **Idempotency** | `webhook_events` table with unique `event_id` prevents duplicate processing |
+| **Payload storage** | Full payload stored for audit trail |
+| **Server-only** | Webhook secret never exposed to client; route is `POST`-only |
+
+### 6.5 Local Data Stored
+
+| Field | Source |
+|-------|--------|
+| `polar_customer_id` | From webhook `payload.data.customer.id` |
+| `polar_subscription_id` | From webhook `payload.data.id` |
+| `polar_subscription_status` | `active`, `canceled`, `past_due`, `revoked` |
+| `current_period_end` | End of current billing period |
+| `plan_tier` | Derived: `active`/`trialing` → `pro`, else → `free` |
+
+---
+
+## 7. Next.js Implementation Blueprint
+
+### 7.1 Folder Structure
+
+```
+src/
+├── app/
+│   ├── (auth)/                    # Auth routes (no sidebar/header)
+│   │   ├── login/
+│   │   │   └── page.tsx
+│   │   ├── signup/
+│   │   │   └── page.tsx
+│   │   └── layout.tsx             # Minimal layout for auth pages
+│   │
+│   ├── (app)/                     # Protected app routes
+│   │   ├── dashboard/
+│   │   │   └── page.tsx           # Main calendar page
+│   │   ├── settings/
+│   │   │   └── page.tsx           # Account settings, manage subscription
+│   │   └── layout.tsx             # App shell (header, sidebar)
+│   │
+│   ├── api/
+│   │   ├── auth/
+│   │   │   └── [...all]/
+│   │   │       └── route.ts       # Better Auth handler
+│   │   ├── checkout/
+│   │   │   └── route.ts           # Polar checkout session
+│   │   └── webhook/
+│   │       └── polar/
+│   │           └── route.ts       # Polar webhook handler
+│   │
+│   ├── layout.tsx                 # Root layout (fonts, providers)
+│   ├── page.tsx                   # Landing page (redirect to /dashboard if logged in)
+│   └── globals.css
+│
+├── components/
+│   ├── ui/                        # shadcn/ui components
+│   │   ├── badge.tsx
+│   │   ├── button.tsx
+│   │   ├── calendar.tsx
+│   │   ├── card.tsx
+│   │   ├── dialog.tsx
+│   │   ├── dropdown-menu.tsx
+│   │   ├── input.tsx
+│   │   ├── label.tsx
+│   │   ├── popover.tsx
+│   │   ├── progress.tsx
+│   │   ├── select.tsx
+│   │   ├── separator.tsx
+│   │   ├── sheet.tsx
+│   │   ├── skeleton.tsx
+│   │   ├── switch.tsx
+│   │   ├── tabs.tsx
+│   │   └── sonner.tsx
+│   │
+│   ├── calendar/
+│   │   ├── calendar-view.tsx      # Month calendar with custom day cells
+│   │   ├── day-cell.tsx           # Individual day with payment dots
+│   │   ├── day-drawer.tsx         # Sheet showing day details
+│   │   └── month-nav.tsx          # Month navigation with quick jump
+│   │
+│   ├── items/
+│   │   ├── item-form.tsx          # Add/Edit item sheet with tabs
+│   │   ├── item-card.tsx          # Item card in upcoming sidebar
+│   │   └── item-actions.tsx       # Dropdown menu for item actions
+│   │
+│   ├── sidebar/
+│   │   ├── upcoming-sidebar.tsx   # Right sidebar component
+│   │   └── monthly-total.tsx      # Total RM card
+│   │
+│   ├── layout/
+│   │   ├── app-header.tsx         # Header with logo, nav, user menu
+│   │   └── app-shell.tsx          # Overall layout container
+│   │
+│   └── upgrade/
+│       └── upgrade-dialog.tsx     # Upgrade to Pro dialog
+│
+├── lib/
+│   ├── auth.ts                    # Better Auth server instance
+│   ├── auth-client.ts             # Better Auth React client
+│   ├── polar.ts                   # Polar API client
+│   ├── schedule.ts                # Recurrence calculation helpers
+│   ├── format.ts                  # RM currency formatting, date formatting
+│   └── utils.ts                   # cn() helper, misc
+│
+├── db/
+│   ├── index.ts                   # Drizzle client (Neon connection)
+│   ├── schema.ts                  # All tables (from section 4)
+│   └── migrations/                # Drizzle migrations
+│
+├── actions/
+│   ├── items.ts                   # Server actions: create, update, delete, toggleActive
+│   ├── occurrences.ts             # Server actions: markAsPaid, getMonthOccurrences
+│   └── entitlements.ts            # Server actions: checkCanCreate, getUserPlan
+│
+├── hooks/
+│   ├── use-items.ts               # Client hooks for item data
+│   └── use-calendar.ts            # Calendar state management
+│
+├── middleware.ts                   # Route protection
+│
+└── types/
+    └── index.ts                   # Shared TypeScript types
+```
+
+### 7.2 Route Protection Strategy
+
+**Middleware (edge, runs before all requests):**
+```typescript
+// src/middleware.ts
+import { betterFetch } from "@better-fetch/fetch";
+import { NextRequest, NextResponse } from "next/server";
+import type { Session } from "better-auth/types";
+
+const authRoutes = ["/login", "/signup"];
+const publicRoutes = ["/", "/api/auth", "/api/webhook"];
+
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Allow public routes and API auth routes
+  if (publicRoutes.some((route) => pathname.startsWith(route))) {
+    return NextResponse.next();
+  }
+
+  // Check session via Better Auth
+  const { data: session } = await betterFetch<Session>(
+    "/api/auth/get-session",
+    {
+      baseURL: request.nextUrl.origin,
+      headers: {
+        cookie: request.headers.get("cookie") || "",
+      },
+    }
+  );
+
+  // Redirect unauthenticated users to login
+  if (!session) {
+    if (authRoutes.includes(pathname)) {
+      return NextResponse.next();
+    }
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  // Redirect authenticated users away from auth pages
+  if (authRoutes.includes(pathname)) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)"],
+};
+```
+
+**Server component protection (belt-and-suspenders):**
+```typescript
+// src/app/(app)/layout.tsx
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+
+export default async function AppLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session) {
+    redirect("/login");
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <AppHeader user={session.user} />
+      <main className="flex-1">{children}</main>
+    </div>
+  );
+}
+```
+
+### 7.3 Key Code Scaffolding
+
+#### Auth Configuration
+
+```typescript
+// src/lib/auth.ts
+import { betterAuth } from "better-auth";
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { db } from "@/db";
+
+export const auth = betterAuth({
+  database: drizzleAdapter(db, {
+    provider: "pg",
+  }),
+  emailAndPassword: {
+    enabled: true,
+  },
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    },
+  },
+});
+```
+
+```typescript
+// src/lib/auth-client.ts
+import { createAuthClient } from "better-auth/react";
+
+export const authClient = createAuthClient();
+
+export const { signIn, signUp, signOut, useSession } = authClient;
+```
+
+```typescript
+// src/app/api/auth/[...all]/route.ts
+import { auth } from "@/lib/auth";
+import { toNextJsHandler } from "better-auth/next-js";
+
+export const { POST, GET } = toNextJsHandler(auth);
+```
+
+#### Drizzle / Neon Connection
+
+```typescript
+// src/db/index.ts
+import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-http";
+import * as schema from "./schema";
+
+const sql = neon(process.env.DATABASE_URL!);
+export const db = drizzle(sql, { schema });
+```
+
+#### Calendar Page Skeleton
+
+```typescript
+// src/app/(app)/dashboard/page.tsx
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+import { CalendarView } from "@/components/calendar/calendar-view";
+import { UpcomingSidebar } from "@/components/sidebar/upcoming-sidebar";
+import { getMonthOccurrences } from "@/actions/occurrences";
+import { getUserItems } from "@/actions/items";
+
+export default async function DashboardPage() {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  const now = new Date();
+  const items = await getUserItems(session!.user.id);
+  const occurrences = await getMonthOccurrences(
+    session!.user.id,
+    now.getFullYear(),
+    now.getMonth()
+  );
+
+  return (
+    <div className="flex flex-col lg:flex-row gap-6 p-6 max-w-7xl mx-auto">
+      {/* Calendar Section */}
+      <div className="flex-1 min-w-0">
+        <CalendarView
+          items={items}
+          occurrences={occurrences}
+          userId={session!.user.id}
+        />
+      </div>
+
+      {/* Upcoming Sidebar */}
+      <aside className="w-full lg:w-[380px] shrink-0">
+        <UpcomingSidebar
+          items={items}
+          occurrences={occurrences}
+        />
+      </aside>
+    </div>
+  );
+}
+```
+
+#### Create/Edit Item Sheet
+
+```typescript
+// src/components/items/item-form.tsx
+"use client";
+
+import { useState } from "react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+import { createItem, updateItem } from "@/actions/items";
+
+const CATEGORIES = [
+  { value: "entertainment", label: "🎬 Entertainment" },
+  { value: "food", label: "🍔 Food & Dining" },
+  { value: "transport", label: "🚗 Transport" },
+  { value: "shopping", label: "🛒 Shopping" },
+  { value: "gadget", label: "📱 Gadget" },
+  { value: "insurance", label: "🛡️ Insurance" },
+  { value: "education", label: "📚 Education" },
+  { value: "health", label: "💊 Health" },
+  { value: "utilities", label: "💡 Utilities" },
+  { value: "other", label: "📦 Other" },
+];
+
+const PRESET_COLORS = [
+  "#6366F1", "#EC4899", "#F59E0B",
+  "#10B981", "#3B82F6", "#EF4444",
+];
+
+interface ItemFormProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  editItem?: any; // existing item for editing
+}
+
+export function ItemForm({ open, onOpenChange, editItem }: ItemFormProps) {
+  const [type, setType] = useState<"subscription" | "bnpl">(
+    editItem?.type ?? "subscription"
+  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function handleSubmit(formData: FormData) {
+    setIsSubmitting(true);
+    try {
+      formData.set("type", type);
+      if (editItem) {
+        await updateItem(editItem.id, formData);
+        toast.success("Item updated!");
+      } else {
+        await createItem(formData);
+        toast.success("Item added!");
+      }
+      onOpenChange(false);
+    } catch (error: any) {
+      if (error.message === "UPGRADE_REQUIRED") {
+        toast.error("You've reached the free limit. Upgrade to Pro!");
+        // Trigger upgrade dialog
+      } else {
+        toast.error("Something went wrong. Please try again.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>
+            {editItem ? "Edit Item" : "Add New Item"}
+          </SheetTitle>
+        </SheetHeader>
+
+        <form action={handleSubmit} className="space-y-6 mt-6">
+          <Tabs value={type} onValueChange={(v) => setType(v as any)}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="subscription">Subscription</TabsTrigger>
+              <TabsTrigger value="bnpl">BNPL / Installment</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {/* Name */}
+          <div className="space-y-2">
+            <Label htmlFor="name">Name</Label>
+            <Input
+              id="name"
+              name="name"
+              placeholder={type === "subscription" ? "e.g. Netflix" : "e.g. iPhone via Atome"}
+              defaultValue={editItem?.name}
+              required
+              maxLength={100}
+            />
+          </div>
+
+          {/* Amount */}
+          <div className="space-y-2">
+            <Label htmlFor="amount">
+              {type === "subscription" ? "Amount (RM)" : "Installment Amount (RM)"}
+            </Label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                RM
+              </span>
+              <Input
+                id="amount"
+                name="amount"
+                type="number"
+                step="0.01"
+                min="0.01"
+                max="99999.99"
+                className="pl-10"
+                placeholder="0.00"
+                defaultValue={editItem?.amount}
+                required
+              />
+            </div>
+          </div>
+
+          {/* Billing cycle */}
+          <div className="space-y-2">
+            <Label>Billing Cycle</Label>
+            <Select name="billingCycle" defaultValue={editItem?.billingCycle ?? "monthly"}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                {type === "bnpl" && (
+                  <SelectItem value="biweekly">Biweekly</SelectItem>
+                )}
+                <SelectItem value="monthly">Monthly</SelectItem>
+                {type === "subscription" && (
+                  <SelectItem value="yearly">Yearly</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Billing day */}
+          <div className="space-y-2">
+            <Label htmlFor="billingDay">Billing Day</Label>
+            <Input
+              id="billingDay"
+              name="billingDay"
+              type="number"
+              min="1"
+              max="31"
+              defaultValue={editItem?.billingDay ?? 1}
+              required
+            />
+          </div>
+
+          {/* Start date */}
+          <div className="space-y-2">
+            <Label htmlFor="startDate">Start Date</Label>
+            <Input
+              id="startDate"
+              name="startDate"
+              type="date"
+              defaultValue={
+                editItem?.startDate?.toISOString().split("T")[0] ??
+                new Date().toISOString().split("T")[0]
+              }
+              required
+            />
+          </div>
+
+          {/* BNPL-specific fields */}
+          {type === "bnpl" && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="totalInstallments">Total Installments</Label>
+                <Input
+                  id="totalInstallments"
+                  name="totalInstallments"
+                  type="number"
+                  min="1"
+                  max="120"
+                  defaultValue={editItem?.totalInstallments ?? 6}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="installmentsPaid">Already Paid</Label>
+                <Input
+                  id="installmentsPaid"
+                  name="installmentsPaid"
+                  type="number"
+                  min="0"
+                  defaultValue={editItem?.installmentsPaid ?? 0}
+                  required
+                />
+              </div>
+            </>
+          )}
+
+          {/* Category */}
+          <div className="space-y-2">
+            <Label>Category</Label>
+            <Select name="category" defaultValue={editItem?.category ?? "other"}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CATEGORIES.map((cat) => (
+                  <SelectItem key={cat.value} value={cat.value}>
+                    {cat.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Color picker */}
+          <div className="space-y-2">
+            <Label>Color</Label>
+            <div className="flex gap-2">
+              {PRESET_COLORS.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  className="w-8 h-8 rounded-full border-2 border-transparent
+                    data-[selected=true]:border-foreground transition-all"
+                  style={{ backgroundColor: color }}
+                  name="color"
+                  value={color}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div className="space-y-2">
+            <Label htmlFor="notes">Notes (optional)</Label>
+            <Input
+              id="notes"
+              name="notes"
+              placeholder="e.g. Family plan, shared with 3"
+              defaultValue={editItem?.notes}
+              maxLength={500}
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-4">
+            <Button type="submit" className="flex-1" disabled={isSubmitting}>
+              {isSubmitting ? "Saving..." : editItem ? "Save Changes" : "Add Item"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
+      </SheetContent>
+    </Sheet>
+  );
+}
+```
+
+#### Format Helpers
+
+```typescript
+// src/lib/format.ts
+export function formatRM(amount: number | string): string {
+  const num = typeof amount === "string" ? parseFloat(amount) : amount;
+  return `RM ${num.toFixed(2)}`;
+}
+
+export function formatDate(date: Date): string {
+  return new Intl.DateTimeFormat("en-MY", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "Asia/Kuala_Lumpur",
+  }).format(date);
+}
+
+export function formatRelativeDate(date: Date): string {
+  const now = new Date();
+  const diff = Math.ceil(
+    (date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  if (diff === 0) return "Today";
+  if (diff === 1) return "Tomorrow";
+  if (diff === -1) return "Yesterday";
+  if (diff > 0 && diff <= 7) return `In ${diff} days`;
+  if (diff < 0) return `${Math.abs(diff)} days ago`;
+  return formatDate(date);
+}
+```
+
+---
+
+## 8. Milestones
+
+### Week 1: Foundation + Core CRUD
+
+| Day | Task | Acceptance Criteria |
+|-----|------|---------------------|
+| **D1** | **Project setup** | Next.js configured, Tailwind + shadcn/ui initialized, Neon DB connected, Drizzle schema migrated, env vars set |
+| **D1** | **Auth setup** | Better Auth configured with email/password + Google. Login/signup pages working. Middleware protects `/dashboard`. |
+| **D2** | **Item CRUD** | Server actions for create/read/update/delete items. Free-tier limit (3 items) enforced server-side. |
+| **D2** | **Item form UI** | Add/Edit item `Sheet` with `Tabs` (Subscription / BNPL). All fields working with validation. |
+| **D3** | **Calendar view** | Month view rendering with payment dots on due dates. Month navigation working. Custom day cells with colored indicators. |
+| **D3** | **Day drawer** | Click day → `Sheet` opens with all items due. "Mark as Paid" button functional. |
+| **D4** | **Upcoming sidebar** | Monthly total card. Sorted list of upcoming due items. BNPL progress bars. Responsive layout (desktop 2-col, mobile stacked). |
+| **D5** | **Polish & empty states** | Empty state illustrations. Loading skeletons. Error toasts. Upgrade limit dialog (non-functional payment). |
+
+### Week 2: Payments + Polish + Deploy
+
+| Day | Task | Acceptance Criteria |
+|-----|------|---------------------|
+| **D6** | **Polar integration** | Polar product created. Checkout route working. Embedded checkout opens from upgrade dialog. |
+| **D7** | **Webhook handler** | Webhook route receives events. Signature validation works. Entitlement updated on subscription create/update/revoke. Idempotency via `webhook_events` table. |
+| **D7** | **Plan gating** | Pro users can add unlimited items. Free users blocked at 3 with upgrade prompt. Plan tier reflected in UI (badge in header/settings). |
+| **D8** | **Settings page** | View account info. Manage subscription (link to Polar portal). See current plan. |
+| **D8** | **Mark as paid logic** | Full flow: mark paid → occurrence updated → next_due_date recalculated → BNPL completion auto-deactivates. |
+| **D9** | **Responsive + a11y** | Mobile layout tested. Keyboard navigation. ARIA labels. Color-blind safe indicators. Touch targets. |
+| **D10** | **Deploy + test** | Deploy to Vercel. Neon production DB. Polar production mode. End-to-end smoke test. Fix bugs. |
+
+---
+
+## Verification Plan
+
+### Automated Tests
+Since this is a greenfield MVP, we'll verify as follows:
+
+1. **Schema migration test**: Run `npx drizzle-kit push` and confirm all tables created in Neon
+2. **Build test**: `npm run build` completes without errors
+3. **Lint test**: `npm run lint` passes
+
+### Manual Verification (Browser)
+1. **Sign up flow**: Navigate to `/signup`, create account, verify redirect to `/dashboard`
+2. **Add subscription**: Click quick-add, fill form, verify calendar dot appears
+3. **Add BNPL**: Switch to BNPL tab, fill form with installments, verify progress badge
+4. **Free limit**: Add 3 items, try adding 4th — verify upgrade dialog appears
+5. **Mark as paid**: Click calendar day, mark item as paid, verify next occurrence updates
+6. **Polar checkout**: Click upgrade, complete sandbox checkout, verify plan updates to Pro
+7. **Webhook**: Verify subscription webhook updates entitlement (test with Polar CLI `polar listen`)
+
+> [!NOTE]
+> Ask the user for Polar sandbox credentials and Neon connection string before starting execution phase.
