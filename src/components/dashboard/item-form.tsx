@@ -21,8 +21,10 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { CATEGORY_OPTIONS, ITEM_COLORS } from "@/lib/constants";
+import { toLocalDateKey } from "@/lib/date";
 import type { BillingCycle, Category, Item, ItemType } from "@/lib/domain/types";
 import { CreditCard, Package, Calendar, Tag, FileText, Palette } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface ItemFormProps {
   open: boolean;
@@ -32,7 +34,7 @@ interface ItemFormProps {
 }
 
 function todayDate(): string {
-  return new Date().toISOString().slice(0, 10);
+  return toLocalDateKey(new Date());
 }
 
 function makeId(): string {
@@ -109,9 +111,9 @@ export function ItemForm({ open, onClose, onSave, editItem }: ItemFormProps) {
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto p-0">
-        <DialogHeader className="px-6 pt-6">
-          <DialogTitle>{editItem ? "Edit Item" : "Add New Item"}</DialogTitle>
+      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-4">
+          <DialogTitle className="text-lg">{editItem ? "Edit Item" : "Add New Item"}</DialogTitle>
           <DialogDescription>
             {editItem 
               ? "Update your subscription or BNPL details." 
@@ -119,32 +121,32 @@ export function ItemForm({ open, onClose, onSave, editItem }: ItemFormProps) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="px-6 pb-6">
+        <div className="px-6 pb-6 space-y-5">
           {/* Type Selector */}
           <Tabs
             value={type}
             onValueChange={(v) => setDraft((prev) => ({ ...prev, type: v as ItemType }))}
             className="w-full"
           >
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="subscription" className="gap-2">
-                <CreditCard className="h-4 w-4" />
+            <TabsList className="grid w-full grid-cols-2 h-9">
+              <TabsTrigger value="subscription" className="gap-2 text-xs">
+                <CreditCard className="h-3.5 w-3.5" />
                 Subscription
               </TabsTrigger>
-              <TabsTrigger value="bnpl" className="gap-2">
-                <Package className="h-4 w-4" />
+              <TabsTrigger value="bnpl" className="gap-2 text-xs">
+                <Package className="h-3.5 w-3.5" />
                 BNPL
               </TabsTrigger>
             </TabsList>
           </Tabs>
 
-          <Separator className="my-5" />
+          <Separator />
 
           <div className="space-y-4">
             {/* Name */}
             <div className="space-y-2">
-              <Label htmlFor="name" className="flex items-center gap-2">
-                <Tag className="h-3.5 w-3.5 text-muted-foreground" />
+              <Label htmlFor="name" className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <Tag className="h-3 w-3" />
                 Name
               </Label>
               <Input
@@ -158,8 +160,8 @@ export function ItemForm({ open, onClose, onSave, editItem }: ItemFormProps) {
 
             {/* Amount */}
             <div className="space-y-2">
-              <Label htmlFor="amount" className="flex items-center gap-2">
-                <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />
+              <Label htmlFor="amount" className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <CreditCard className="h-3 w-3" />
                 Amount (RM)
               </Label>
               <Input
@@ -177,8 +179,8 @@ export function ItemForm({ open, onClose, onSave, editItem }: ItemFormProps) {
             {/* Billing Cycle & Day */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                <Label className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <Calendar className="h-3 w-3" />
                   Billing Cycle
                 </Label>
                 <Select
@@ -200,7 +202,7 @@ export function ItemForm({ open, onClose, onSave, editItem }: ItemFormProps) {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Billing Day</Label>
+                <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Billing Day</Label>
                 <Input
                   type="number"
                   min="1"
@@ -213,7 +215,7 @@ export function ItemForm({ open, onClose, onSave, editItem }: ItemFormProps) {
 
             {/* Start Date */}
             <div className="space-y-2">
-              <Label htmlFor="startDate">Start Date</Label>
+              <Label htmlFor="startDate" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Start Date</Label>
               <Input
                 id="startDate"
                 type="date"
@@ -226,7 +228,7 @@ export function ItemForm({ open, onClose, onSave, editItem }: ItemFormProps) {
             {type === "bnpl" && (
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="totalInstallments">Total Installments</Label>
+                  <Label htmlFor="totalInstallments" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Total Installments</Label>
                   <Input
                     id="totalInstallments"
                     type="number"
@@ -239,7 +241,7 @@ export function ItemForm({ open, onClose, onSave, editItem }: ItemFormProps) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="installmentsPaid">Paid So Far</Label>
+                  <Label htmlFor="installmentsPaid" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Paid So Far</Label>
                   <Input
                     id="installmentsPaid"
                     type="number"
@@ -255,8 +257,8 @@ export function ItemForm({ open, onClose, onSave, editItem }: ItemFormProps) {
 
             {/* Category */}
             <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Tag className="h-3.5 w-3.5 text-muted-foreground" />
+              <Label className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <Tag className="h-3 w-3" />
                 Category
               </Label>
               <Select
@@ -278,8 +280,8 @@ export function ItemForm({ open, onClose, onSave, editItem }: ItemFormProps) {
 
             {/* Color */}
             <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Palette className="h-3.5 w-3.5 text-muted-foreground" />
+              <Label className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <Palette className="h-3 w-3" />
                 Color
               </Label>
               <div className="flex flex-wrap gap-2">
@@ -289,11 +291,12 @@ export function ItemForm({ open, onClose, onSave, editItem }: ItemFormProps) {
                     type="button"
                     onClick={() => setDraft((prev) => ({ ...prev, color: swatch }))}
                     aria-label={`Select ${swatch}`}
-                    className={`h-8 w-8 rounded-full border-2 transition-all ${
+                    className={cn(
+                      "h-7 w-7 rounded-full border-2 transition-all duration-150",
                       draft.color === swatch
                         ? "border-foreground scale-110"
                         : "border-transparent hover:scale-105"
-                    }`}
+                    )}
                     style={{ backgroundColor: swatch }}
                   />
                 ))}
@@ -302,8 +305,8 @@ export function ItemForm({ open, onClose, onSave, editItem }: ItemFormProps) {
 
             {/* Notes */}
             <div className="space-y-2">
-              <Label htmlFor="notes" className="flex items-center gap-2">
-                <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+              <Label htmlFor="notes" className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <FileText className="h-3 w-3" />
                 Notes (optional)
               </Label>
               <Input
@@ -316,7 +319,7 @@ export function ItemForm({ open, onClose, onSave, editItem }: ItemFormProps) {
             </div>
           </div>
 
-          <Separator className="my-5" />
+          <Separator />
 
           <div className="flex gap-3">
             <Button variant="outline" onClick={onClose} className="flex-1">
@@ -331,4 +334,3 @@ export function ItemForm({ open, onClose, onSave, editItem }: ItemFormProps) {
     </Dialog>
   );
 }
-

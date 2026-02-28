@@ -14,7 +14,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="min-h-screen">
+      <body className="min-h-screen antialiased">
         <TooltipProvider delayDuration={0}>
           {children}
         </TooltipProvider>

@@ -6,10 +6,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-
 import { Separator } from "@/components/ui/separator";
 import { FREE_ITEM_LIMIT } from "@/lib/constants";
-import { Sparkles, Check, Zap } from "lucide-react";
+import { Check, Zap } from "lucide-react";
 
 interface UpgradeDialogProps {
   open: boolean;
@@ -36,19 +35,19 @@ export function UpgradeDialog({
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader className="text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-            <Sparkles className="h-6 w-6 text-primary" />
+          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-foreground/10">
+            <Zap className="h-5 w-5 text-foreground" />
           </div>
-          <DialogTitle className="text-xl">Upgrade to Pro</DialogTitle>
-          <DialogDescription className="text-center">
+          <DialogTitle className="text-lg">Upgrade to Pro</DialogTitle>
+          <DialogDescription className="text-center text-sm">
             You&apos;ve reached the limit of {FREE_ITEM_LIMIT} items on the free plan.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="my-4 rounded-lg bg-muted p-4 text-center">
-          <p className="text-sm text-muted-foreground">Your current usage</p>
-          <p className="mt-1 text-2xl font-bold">
-            {itemCount} <span className="text-muted-foreground">/ {FREE_ITEM_LIMIT}</span>
+        <div className="my-4 rounded-md border bg-muted/30 p-4 text-center">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">Your current usage</p>
+          <p className="mt-1 text-2xl font-semibold">
+            {itemCount} <span className="text-muted-foreground font-normal">/ {FREE_ITEM_LIMIT}</span>
             <span className="ml-2 text-sm font-normal text-muted-foreground">items</span>
           </p>
         </div>
@@ -57,9 +56,9 @@ export function UpgradeDialog({
 
         <div className="py-4">
           <div className="mb-4 flex items-center justify-between">
-            <span className="font-medium">Pro Plan</span>
+            <span className="font-medium text-sm">Pro Plan</span>
             <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-bold">RM10</span>
+              <span className="text-2xl font-semibold">RM10</span>
               <span className="text-sm text-muted-foreground">/month</span>
             </div>
           </div>
@@ -67,7 +66,7 @@ export function UpgradeDialog({
           <ul className="space-y-2">
             {proFeatures.map((feature) => (
               <li key={feature} className="flex items-start gap-2 text-sm">
-                <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-foreground" />
                 <span>{feature}</span>
               </li>
             ))}

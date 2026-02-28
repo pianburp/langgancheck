@@ -9,8 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Shield, ArrowLeft, Check } from "lucide-react";
+import { Shield, Check } from "lucide-react";
 
 export default async function SignupPage() {
   if (await hasSession()) redirect("/dashboard");
@@ -24,37 +23,28 @@ export default async function SignupPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <div className="flex h-14 items-center px-4 sm:px-6 lg:px-8">
-        <Button variant="ghost" asChild className="gap-2">
-          <Link href="/">
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Link>
-        </Button>
-      </div>
-
       <main className="flex flex-1 items-center justify-center px-4 py-12">
-        <div className="grid w-full max-w-5xl gap-8 lg:grid-cols-2">
+        <div className="grid w-full max-w-4xl gap-8 lg:grid-cols-2">
           {/* Left side - Features */}
           <div className="hidden flex-col justify-center lg:flex">
             <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <Shield className="h-4 w-4 text-primary-foreground" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-foreground">
+                <Shield className="h-4 w-4 text-background" />
               </div>
-              <span className="text-lg font-semibold">GajiGuard</span>
+              <span className="text-base font-semibold tracking-tight">GajiGuard</span>
             </div>
-            <h1 className="mt-6 text-3xl font-bold tracking-tight">
+            <h1 className="mt-6 text-2xl font-semibold tracking-tight">
               Start tracking your subscriptions today
             </h1>
-            <p className="mt-2 text-muted-foreground">
+            <p className="mt-2 text-sm text-muted-foreground">
               Join thousands of users managing their recurring payments with
               ease.
             </p>
             <ul className="mt-6 space-y-3">
               {features.map((feature) => (
-                <li key={feature} className="flex items-center gap-2 text-sm">
-                  <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/10">
-                    <Check className="h-3 w-3 text-primary" />
+                <li key={feature} className="flex items-center gap-3 text-sm">
+                  <div className="flex h-5 w-5 items-center justify-center rounded-full bg-foreground/10">
+                    <Check className="h-3 w-3 text-foreground" />
                   </div>
                   {feature}
                 </li>
@@ -63,20 +53,20 @@ export default async function SignupPage() {
           </div>
 
           {/* Right side - Form */}
-          <Card>
+          <Card className="border">
             <CardHeader className="space-y-1">
-              <CardTitle className="text-2xl">Create an account</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-lg font-semibold">Create an account</CardTitle>
+              <CardDescription className="text-xs">
                 Get started with GajiGuard in under a minute.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <AuthForm mode="signup" />
-              <p className="mt-4 text-center text-sm text-muted-foreground">
+              <p className="mt-4 text-center text-xs text-muted-foreground">
                 Already have an account?{" "}
                 <Link
                   href="/auth/login"
-                  className="font-medium text-primary hover:underline"
+                  className="font-medium text-foreground hover:underline"
                 >
                   Sign in
                 </Link>

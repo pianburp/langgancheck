@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { CalendarView } from "@/components/dashboard/calendar-view";
 import { DayDrawer } from "@/components/dashboard/day-drawer";
 import { ItemForm } from "@/components/dashboard/item-form";
@@ -22,7 +22,6 @@ import {
   CalendarDays,
   Plus,
   LayoutDashboard,
-  AlertCircle,
 } from "lucide-react";
 
 interface DashboardClientProps {
@@ -44,7 +43,7 @@ export function DashboardClient({
   const [editItem, setEditItem] = useState<Item | null>(null);
   const [formNonce, setFormNonce] = useState(0);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const [showAuthBanner, setShowAuthBanner] = useState(false);
+  const router = useRouter();
 
   const occurrences = useMemo(
     () =>
@@ -74,11 +73,13 @@ export function DashboardClient({
     [occurrences],
   );
 
-  const promptAuth = () => setShowAuthBanner(true);
+  const redirectToAuth = (mode: "login" | "signup" = "login") => {
+    router.push(mode === "signup" ? "/auth/signup" : "/auth/login");
+  };
 
   const onAddClick = useCallback(() => {
     if (!isAuthenticated) {
-      promptAuth();
+      redirectToAuth("signup");
       return;
     }
     if (plan === "free" && items.length >= FREE_ITEM_LIMIT) {
@@ -88,12 +89,12 @@ export function DashboardClient({
     setEditItem(null);
     setFormNonce((n) => n + 1);
     setFormOpen(true);
-  }, [isAuthenticated, plan, items.length]);
+  }, [isAuthenticated, plan, items.length, router]);
 
   const onSave = useCallback(
     async (item: Item) => {
       if (!isAuthenticated) {
-        promptAuth();
+        redirectToAuth();
         return;
       }
       const exists = items.some((candidate) => candidate.id === item.id);
@@ -110,13 +111,13 @@ export function DashboardClient({
         setItems(items);
       }
     },
-    [isAuthenticated, items],
+    [isAuthenticated, items, router],
   );
 
   const onMarkPaid = useCallback(
     async (itemId: string, date: string) => {
       if (!isAuthenticated) {
-        promptAuth();
+        redirectToAuth();
         return;
       }
 
@@ -148,7 +149,7 @@ export function DashboardClient({
         setItems(items);
       }
     },
-    [isAuthenticated, items],
+    [isAuthenticated, items, router],
   );
 
   const onPrevMonth = () => {
@@ -163,8 +164,6 @@ export function DashboardClient({
     setMonthDate(next);
   };
 
-  const onToday = () => setMonthDate(new Date());
-
   const monthLabel = monthDate.toLocaleDateString("en-US", {
     month: "long",
     year: "numeric",
@@ -172,82 +171,50 @@ export function DashboardClient({
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-      {/* Auth Banner */}
-      {showAuthBanner && !isAuthenticated && (
-        <Card className="mb-6 border-amber-200/50 bg-amber-50/50">
-          <CardContent className="flex items-start gap-4 py-4">
-            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-amber-900">Guest Mode</p>
-              <p className="text-sm text-amber-700/80">
-                Sign in to save your subscriptions and track payments across
-                devices.
-              </p>
-              <div className="mt-3 flex gap-2">
-                <Button asChild size="sm">
-                  <Link href="/auth/login">Log in</Link>
-                </Button>
-                <Button asChild variant="outline" size="sm">
-                  <Link href="/auth/signup">Create account</Link>
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Header */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
             <LayoutDashboard className="h-5 w-5 text-muted-foreground" />
-            <h1 className="text-xl font-semibold tracking-tight">Dashboard</h1>
+            <h1 className="text-lg font-semibold tracking-tight">Dashboard</h1>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
             {isAuthenticated ? (
-              <>
-                Plan:{" "}
-                <Badge variant="secondary" className="uppercase">
+              <span className="flex items-center gap-2">
+                Plan:
+                <Badge variant="secondary" className="text-xs font-normal uppercase">
                   {plan}
                 </Badge>
-                <span className="mx-2 text-border">|</span>
-                {items.length} {items.length === 1 ? "item" : "items"}
-              </>
+                <span className="text-border">|</span>
+                <span>{items.length} {items.length === 1 ? "item" : "items"}</span>
+              </span>
             ) : (
               "Guest preview mode"
             )}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center rounded-lg border bg-card p-1">
+          <div className="flex items-center rounded-md border bg-card p-0.5">
             <Button
               variant="ghost"
-              size="icon"
+              size="icon-xs"
               onClick={onPrevMonth}
-              className="h-8 w-8"
+              className="h-7 w-7"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="min-w-[140px] px-3 text-center text-sm font-medium tabular-nums">
+            <span className="min-w-[130px] px-3 text-center text-sm font-medium tabular-nums">
               {monthLabel}
             </span>
             <Button
               variant="ghost"
-              size="icon"
+              size="icon-xs"
               onClick={onNextMonth}
-              className="h-8 w-8"
+              className="h-7 w-7"
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onToday}
-            className="hidden sm:flex"
-          >
-            Today
-          </Button>
           <Button onClick={onAddClick} size="sm" className="gap-1.5">
             <Plus className="h-4 w-4" />
             Add Item
@@ -256,7 +223,7 @@ export function DashboardClient({
       </div>
 
       {/* Main Content */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_300px]">
         <CalendarView
           monthDate={monthDate}
           occurrences={occurrences}
@@ -272,10 +239,10 @@ export function DashboardClient({
 
       {/* Empty State */}
       {items.length === 0 && (
-        <Card className="mt-6 border-dashed">
+        <Card className="mt-6 border border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-              <CalendarDays className="h-6 w-6 text-primary" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+              <CalendarDays className="h-6 w-6 text-muted-foreground" />
             </div>
             <h3 className="mt-4 font-semibold">No subscriptions yet</h3>
             <p className="mt-1 max-w-sm text-sm text-muted-foreground">
@@ -307,7 +274,7 @@ export function DashboardClient({
         onMarkPaid={onMarkPaid}
         onEdit={(item) => {
           if (!isAuthenticated) {
-            promptAuth();
+            redirectToAuth();
             return;
           }
           setEditItem(item);
@@ -321,7 +288,7 @@ export function DashboardClient({
         onClose={() => setUpgradeOpen(false)}
         onUpgrade={async () => {
           if (!isAuthenticated) {
-            promptAuth();
+            redirectToAuth();
             return;
           }
           setPlan("pro");
@@ -336,4 +303,3 @@ export function DashboardClient({
     </div>
   );
 }
-

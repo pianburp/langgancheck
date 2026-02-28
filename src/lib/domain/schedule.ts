@@ -1,4 +1,5 @@
 import type { Item, Occurrence, OccurrenceStatus } from "@/lib/domain/types";
+import { toLocalDateKey } from "@/lib/date";
 
 function startOfDay(value: Date): Date {
   const d = new Date(value);
@@ -7,7 +8,7 @@ function startOfDay(value: Date): Date {
 }
 
 function toISODate(value: Date): string {
-  return value.toISOString().slice(0, 10);
+  return toLocalDateKey(value);
 }
 
 function addByCycle(date: Date, cycle: Item["billingCycle"]): Date {

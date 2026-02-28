@@ -123,7 +123,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   return (
     <div className="space-y-4">
       {error && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="text-xs">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
@@ -132,7 +132,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       <Button
         type="button"
         variant="outline"
-        className="w-full gap-2"
+        className="w-full gap-2 text-xs"
         disabled={isLoading}
         onClick={handleGoogleSignIn}
       >
@@ -159,7 +159,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       {/* Email/Password form */}
       <form action={onSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email" className="text-xs">Email</Label>
           <div className="relative">
             <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
@@ -169,48 +169,48 @@ export function AuthForm({ mode }: AuthFormProps) {
               placeholder="you@example.com"
               required
               disabled={isLoading}
-              className="pl-9"
+              className="pl-9 text-sm"
             />
           </div>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password" className="text-xs">Password</Label>
           <div className="relative">
             <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               id="password"
               name="password"
               type="password"
-              placeholder="********"
+              placeholder="••••••••"
               required
               minLength={8}
               disabled={isLoading}
-              className="pl-9"
+              className="pl-9 text-sm"
             />
           </div>
         </div>
 
         {mode === "signup" && (
           <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm password</Label>
+            <Label htmlFor="confirmPassword" className="text-xs">Confirm password</Label>
             <div className="relative">
               <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 id="confirmPassword"
                 name="confirmPassword"
                 type="password"
-                placeholder="********"
+                placeholder="••••••••"
                 required
                 minLength={8}
                 disabled={isLoading}
-                className="pl-9"
+                className="pl-9 text-sm"
               />
             </div>
           </div>
         )}
 
-        <Button type="submit" disabled={isLoading} className="w-full">
+        <Button type="submit" disabled={isLoading} className="w-full text-xs">
           {isSubmitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

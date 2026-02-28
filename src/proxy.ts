@@ -19,17 +19,9 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (
-    (pathname.startsWith("/auth/login") ||
-      pathname.startsWith("/auth/signup")) &&
-    isAuthenticated
-  ) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
-  }
-
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/auth/login", "/auth/signup", "/dashboard/:path*"],
+  matcher: ["/dashboard/:path*"],
 };

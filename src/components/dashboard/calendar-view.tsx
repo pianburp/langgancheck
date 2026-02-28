@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { toLocalDateKey } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import type { Item, Occurrence } from "@/lib/domain/types";
 
@@ -10,7 +11,7 @@ interface CalendarViewProps {
 }
 
 function iso(date: Date): string {
-  return date.toISOString().slice(0, 10);
+  return toLocalDateKey(date);
 }
 
 function monthCells(monthDate: Date): Date[] {
@@ -45,13 +46,13 @@ export function CalendarView({
   const today = iso(new Date());
 
   return (
-    <Card className="overflow-hidden">
-      <CardHeader className="border-b bg-muted/30 px-4 py-3">
+    <Card className="overflow-hidden border">
+      <CardHeader className="border-b bg-muted/40 px-4 py-3">
         <div className="grid grid-cols-7">
           {weekDays.map((day) => (
             <div 
               key={day} 
-              className="py-2 text-center text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              className="py-2 text-center text-xs font-medium uppercase tracking-wide text-muted-foreground"
             >
               {day}
             </div>
@@ -71,21 +72,22 @@ export function CalendarView({
                 key={key}
                 onClick={() => onSelectDate(key)}
                 className={cn(
-                  "relative min-h-[100px] border-b border-r p-2 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  !inMonth && "bg-muted/20 text-muted-foreground/50",
-                  day.getDay() === 0 && "border-r-0" // Sunday
+                  "relative min-h-[100px] border-b border-r p-2 text-left transition-colors duration-150",
+                  "hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+                  !inMonth && "bg-muted/30 text-muted-foreground/60",
+                  day.getDay() === 0 && "border-r-0"
                 )}
               >
                 <span
                   className={cn(
                     "inline-flex h-6 w-6 items-center justify-center text-sm",
-                    isToday && "rounded-full bg-primary font-medium text-primary-foreground"
+                    isToday && "rounded-full bg-foreground font-medium text-background"
                   )}
                 >
                   {day.getDate()}
                 </span>
                 {dayItems.length > 0 && (
-                  <div className="mt-1.5 flex flex-wrap gap-1">
+                  <div className="mt-2 flex flex-wrap gap-1">
                     {dayItems.slice(0, 5).map((occurrence, idx) => {
                       const item = itemsById[occurrence.itemId];
                       const isPaid = occurrence.status === "paid";
@@ -99,7 +101,7 @@ export function CalendarView({
                             "h-1.5 w-1.5 rounded-full",
                             isPaid && "bg-muted-foreground/30",
                             isMissed && "bg-destructive",
-                            !isPaid && !isMissed && "bg-primary/80"
+                            !isPaid && !isMissed && "bg-foreground/70"
                           )}
                           style={{
                             backgroundColor: !isPaid && !isMissed ? item?.color : undefined,
@@ -122,4 +124,3 @@ export function CalendarView({
     </Card>
   );
 }
-

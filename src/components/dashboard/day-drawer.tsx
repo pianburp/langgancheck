@@ -46,9 +46,9 @@ export function DayDrawer({
         <SheetHeader className="space-y-2 pb-4">
           <div className="flex items-center gap-2 text-muted-foreground">
             <Calendar className="h-4 w-4" />
-            <span className="text-xs font-medium uppercase tracking-wider">Payment Date</span>
+            <span className="text-xs font-medium uppercase tracking-wide">Payment Date</span>
           </div>
-          <SheetTitle className="text-left text-2xl">{date ? formatDate(date) : ""}</SheetTitle>
+          <SheetTitle className="text-left text-xl font-semibold">{date ? formatDate(date) : ""}</SheetTitle>
           <SheetDescription className="text-left">
             {occurrences.length === 0
               ? "No payments due on this date."
@@ -80,7 +80,7 @@ export function DayDrawer({
                 return (
                   <div
                     key={`${occurrence.itemId}-${idx}`}
-                    className="rounded-lg border bg-card p-4 transition-colors"
+                    className="rounded-lg border bg-card p-4 transition-colors duration-150"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
@@ -92,7 +92,7 @@ export function DayDrawer({
                           <h4 className="truncate font-medium">{item.name}</h4>
                         </div>
                         <div className="mt-2 flex items-center gap-2">
-                          <Badge variant="outline" className="gap-1 text-xs">
+                          <Badge variant="outline" className="gap-1 text-xs font-normal">
                             {isBnpl ? (
                               <Package className="h-3 w-3" />
                             ) : (
@@ -104,7 +104,7 @@ export function DayDrawer({
                             variant={
                               isPaid ? "secondary" : isMissed ? "destructive" : "default"
                             }
-                            className="text-xs"
+                            className="text-xs font-normal"
                           >
                             {occurrence.status}
                           </Badge>
@@ -127,7 +127,7 @@ export function DayDrawer({
                         </div>
                         <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
                           <div
-                            className="h-full bg-primary transition-all"
+                            className="h-full bg-foreground transition-all duration-300"
                             style={{
                               width: `${Math.min(
                                 (item.installmentsPaid / item.totalInstallments) * 100,
@@ -171,7 +171,7 @@ export function DayDrawer({
             <Separator className="mb-4" />
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Total Due</span>
-              <span className="text-xl font-bold tabular-nums">{formatRM(totalDue)}</span>
+              <span className="text-xl font-semibold tabular-nums">{formatRM(totalDue)}</span>
             </div>
           </>
         )}
@@ -179,4 +179,3 @@ export function DayDrawer({
     </Sheet>
   );
 }
-
