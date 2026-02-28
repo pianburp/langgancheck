@@ -1,4 +1,6 @@
-import type { Item, Occurrence } from "@/types";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import type { Item, Occurrence } from "@/lib/domain/types";
 
 interface CalendarViewProps {
   monthDate: Date;
@@ -23,6 +25,8 @@ function monthCells(monthDate: Date): Date[] {
   });
 }
 
+const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
 export function CalendarView({
   monthDate,
   occurrences,
@@ -31,59 +35,91 @@ export function CalendarView({
 }: CalendarViewProps) {
   const cells = monthCells(monthDate);
   const occurrenceMap = new Map<string, Occurrence[]>();
+  
   for (const occurrence of occurrences) {
     const list = occurrenceMap.get(occurrence.date) ?? [];
     list.push(occurrence);
     occurrenceMap.set(occurrence.date, list);
   }
 
+  const today = iso(new Date());
+
   return (
-    <section className="rounded-2xl border bg-white p-4 sm:p-6">
-      <div className="mb-3 grid grid-cols-7 text-xs font-bold uppercase text-slate-500">
-        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
-          <div key={day} className="px-2 py-1 text-center">
-            {day}
-          </div>
-        ))}
-      </div>
-      <div className="grid grid-cols-7 gap-1">
-        {cells.map((day) => {
-          const key = iso(day);
-          const dayItems = occurrenceMap.get(key) ?? [];
-          const inMonth = day.getMonth() === monthDate.getMonth();
-          return (
-            <button
-              key={key}
-              aria-label={`View due items for ${key}`}
-              onClick={() => onSelectDate(key)}
-              className={`min-h-24 rounded-xl border p-2 text-left ${
-                inMonth ? "bg-white" : "bg-slate-50 text-slate-400"
-              }`}
+    <Card className="overflow-hidden">
+      <CardHeader className="border-b bg-muted/30 px-4 py-3">
+        <div className="grid grid-cols-7">
+          {weekDays.map((day) => (
+            <div 
+              key={day} 
+              className="py-2 text-center text-xs font-medium uppercase tracking-wider text-muted-foreground"
             >
-              <div className="text-sm font-semibold">{day.getDate()}</div>
-              <div className="mt-2 flex flex-wrap gap-1">
-                {dayItems.slice(0, 4).map((occurrence, idx) => {
-                  const item = itemsById[occurrence.itemId];
-                  const style =
-                    occurrence.status === "paid"
-                      ? "border"
-                      : occurrence.status === "missed"
-                        ? "bg-red-600"
-                        : "bg-slate-700";
-                  return (
-                    <span
-                      key={`${occurrence.itemId}-${idx}`}
-                      title={item?.name}
-                      className={`inline-block h-2 w-2 rounded-full ${style}`}
-                      style={{ backgroundColor: occurrence.status === "upcoming" ? item?.color : undefined }}
-                    />
-                  );
-                })}
-              </div>
-            </button>
-          );
-        })}
-      </div>
-    </section>
+              {day}
+            </div>
+          ))}
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="grid grid-cols-7">
+          {cells.map((day) => {
+            const key = iso(day);
+            const dayItems = occurrenceMap.get(key) ?? [];
+            const inMonth = day.getMonth() === monthDate.getMonth();
+            const isToday = key === today;
+
+            return (
+              <button
+                key={key}
+                onClick={() => onSelectDate(key)}
+                className={cn(
+                  "relative min-h-[100px] border-b border-r p-2 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  !inMonth && "bg-muted/20 text-muted-foreground/50",
+                  day.getDay() === 0 && "border-r-0" // Sunday
+                )}
+              >
+                <span
+                  className={cn(
+                    "inline-flex h-6 w-6 items-center justify-center text-sm",
+                    isToday && "rounded-full bg-primary font-medium text-primary-foreground"
+                  )}
+                >
+                  {day.getDate()}
+                </span>
+                {dayItems.length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap gap-1">
+                    {dayItems.slice(0, 5).map((occurrence, idx) => {
+                      const item = itemsById[occurrence.itemId];
+                      const isPaid = occurrence.status === "paid";
+                      const isMissed = occurrence.status === "missed";
+                      
+                      return (
+                        <span
+                          key={`${occurrence.itemId}-${idx}`}
+                          title={item?.name}
+                          className={cn(
+                            "h-1.5 w-1.5 rounded-full",
+                            isPaid && "bg-muted-foreground/30",
+                            isMissed && "bg-destructive",
+                            !isPaid && !isMissed && "bg-primary/80"
+                          )}
+                          style={{
+                            backgroundColor: !isPaid && !isMissed ? item?.color : undefined,
+                          }}
+                        />
+                      );
+                    })}
+                    {dayItems.length > 5 && (
+                      <span className="text-[10px] leading-none text-muted-foreground">
+                        +{dayItems.length - 5}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
+

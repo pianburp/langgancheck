@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 export const metadata: Metadata = {
-  title: "GajiGuard",
-  description: "Track subscriptions and BNPL commitments with a monthly calendar.",
+  title: "GajiGuard — Subscription & BNPL Tracker",
+  description: "Track subscriptions and BNPL commitments with a monthly calendar view.",
 };
 
 export default function RootLayout({
@@ -12,9 +13,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className="antialiased">
-        {children}
+    <html lang="en" suppressHydrationWarning>
+      <body className="min-h-screen">
+        <TooltipProvider delayDuration={0}>
+          {children}
+        </TooltipProvider>
       </body>
     </html>
   );

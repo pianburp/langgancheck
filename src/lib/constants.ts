@@ -1,4 +1,4 @@
-import type { Category } from "@/types";
+import type { Category } from "@/lib/domain/types";
 
 export const FREE_ITEM_LIMIT = 3;
 
@@ -23,3 +23,4 @@ export const ITEM_COLORS = [
   "#4C1D95",
   "#15803D",
 ];
+

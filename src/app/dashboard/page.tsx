@@ -1,7 +1,5 @@
-import { DashboardClient } from "@/components/dashboard/dashboard-client";
-import { requireSession } from "@/lib/session";
+import { redirect } from "next/navigation";
 
-export default async function DashboardPage() {
-  await requireSession();
-  return <DashboardClient />;
+export default function DashboardPage() {
+  redirect("/");
 }

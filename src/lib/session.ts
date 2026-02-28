@@ -1,13 +1,25 @@
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
 
-export const SESSION_COOKIE = "gajiguard_session";
+export async function getSession() {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
 
-export async function hasSession(): Promise<boolean> {
-  const store = await cookies();
-  return Boolean(store.get(SESSION_COOKIE)?.value);
+  return session;
 }
 
-export async function requireSession(): Promise<void> {
-  if (!(await hasSession())) redirect("/login");
+export async function hasSession(): Promise<boolean> {
+  const session = await getSession();
+  return session !== null;
+}
+
+export async function getSessionUser() {
+  const session = await getSession();
+  return session?.user ?? null;
+}
+
+export async function getSessionEmail(): Promise<string | null> {
+  const user = await getSessionUser();
+  return user?.email ?? null;
 }

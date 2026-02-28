@@ -1,8 +1,28 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 import { CATEGORY_OPTIONS, ITEM_COLORS } from "@/lib/constants";
-import type { BillingCycle, Category, Item, ItemType } from "@/types";
+import type { BillingCycle, Category, Item, ItemType } from "@/lib/domain/types";
+import { CreditCard, Package, Calendar, Tag, FileText, Palette } from "lucide-react";
 
 interface ItemFormProps {
   open: boolean;
@@ -35,10 +55,10 @@ type ItemDraft = {
 
 function toDraft(editItem: Item | null): ItemDraft {
   return {
-    type: editItem?.type ?? ("subscription" as ItemType),
+    type: editItem?.type ?? "subscription",
     name: editItem?.name ?? "",
-    amount: String(editItem?.amount ?? 0),
-    billingCycle: editItem?.billingCycle ?? ("monthly" as BillingCycle),
+    amount: String(editItem?.amount ?? ""),
+    billingCycle: editItem?.billingCycle ?? "monthly",
     billingDay: String(editItem?.billingDay ?? 1),
     startDate: editItem?.startDate ?? todayDate(),
     category: editItem?.category ?? "other",
@@ -58,210 +78,257 @@ export function ItemForm({ open, onClose, onSave, editItem }: ItemFormProps) {
     return ["weekly", "monthly", "yearly"] as const;
   }, [type]);
 
-  if (!open) return null;
+  const handleSubmit = () => {
+    const parsedAmount = Number(draft.amount);
+    const parsedBillingDay = Number(draft.billingDay);
+    const parsedTotal = Number(draft.totalInstallments);
+    const parsedPaid = Number(draft.installmentsPaid);
+    
+    if (!draft.name.trim() || parsedAmount <= 0) return;
+    if (parsedBillingDay < 1 || parsedBillingDay > 31) return;
+
+    onSave({
+      id: editItem?.id ?? makeId(),
+      type: draft.type,
+      name: draft.name.trim(),
+      amount: parsedAmount,
+      currency: "MYR",
+      billingCycle: draft.billingCycle,
+      billingDay: parsedBillingDay,
+      startDate: draft.startDate,
+      category: draft.category as Item["category"],
+      color: draft.color,
+      notes: draft.notes.trim(),
+      isActive: true,
+      totalInstallments: draft.type === "bnpl" ? parsedTotal : null,
+      installmentsPaid: draft.type === "bnpl" ? parsedPaid : 0,
+      paidDates: editItem?.paidDates ?? [],
+    });
+    onClose();
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-      <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-6 shadow-lg">
-        <h2 className="text-xl font-bold">{editItem ? "Edit item" : "Add item"}</h2>
-        <div className="mt-4 grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1">
-          <button
-            type="button"
-            onClick={() => setDraft((prev) => ({ ...prev, type: "subscription" }))}
-            className={`rounded-lg px-3 py-2 text-sm font-semibold ${
-              type === "subscription" ? "bg-white" : "text-slate-600"
-            }`}
-          >
-            Subscription
-          </button>
-          <button
-            type="button"
-            onClick={() => setDraft((prev) => ({ ...prev, type: "bnpl" }))}
-            className={`rounded-lg px-3 py-2 text-sm font-semibold ${
-              type === "bnpl" ? "bg-white" : "text-slate-600"
-            }`}
-          >
-            BNPL
-          </button>
-        </div>
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto p-0">
+        <DialogHeader className="px-6 pt-6">
+          <DialogTitle>{editItem ? "Edit Item" : "Add New Item"}</DialogTitle>
+          <DialogDescription>
+            {editItem 
+              ? "Update your subscription or BNPL details." 
+              : "Track a new subscription or buy now, pay later commitment."}
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="mt-4 space-y-4">
-          <label className="block text-sm font-medium">
-            Name
-            <input
-              value={draft.name}
-              onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))}
-              className="mt-1 w-full rounded-xl border bg-white px-3 py-2"
-              maxLength={100}
-              required
-            />
-          </label>
-          <label className="block text-sm font-medium">
-            Amount (RM)
-            <input
-              value={draft.amount}
-              onChange={(e) => setDraft((prev) => ({ ...prev, amount: e.target.value }))}
-              type="number"
-              min="0.01"
-              max="99999.99"
-              step="0.01"
-              className="mt-1 w-full rounded-xl border bg-white px-3 py-2"
-            />
-          </label>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block text-sm font-medium">
-              Billing cycle
-              <select
-                value={draft.billingCycle}
-                onChange={(e) =>
-                  setDraft((prev) => ({ ...prev, billingCycle: e.target.value as BillingCycle }))
-                }
-                className="mt-1 w-full rounded-xl border bg-white px-3 py-2"
-              >
-                {cycleOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block text-sm font-medium">
-              Billing day
-              <input
-                value={draft.billingDay}
-                onChange={(e) => setDraft((prev) => ({ ...prev, billingDay: e.target.value }))}
-                type="number"
-                min="1"
-                max="31"
-                className="mt-1 w-full rounded-xl border bg-white px-3 py-2"
+        <div className="px-6 pb-6">
+          {/* Type Selector */}
+          <Tabs
+            value={type}
+            onValueChange={(v) => setDraft((prev) => ({ ...prev, type: v as ItemType }))}
+            className="w-full"
+          >
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="subscription" className="gap-2">
+                <CreditCard className="h-4 w-4" />
+                Subscription
+              </TabsTrigger>
+              <TabsTrigger value="bnpl" className="gap-2">
+                <Package className="h-4 w-4" />
+                BNPL
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          <Separator className="my-5" />
+
+          <div className="space-y-4">
+            {/* Name */}
+            <div className="space-y-2">
+              <Label htmlFor="name" className="flex items-center gap-2">
+                <Tag className="h-3.5 w-3.5 text-muted-foreground" />
+                Name
+              </Label>
+              <Input
+                id="name"
+                value={draft.name}
+                onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))}
+                placeholder="e.g., Netflix, iPhone Installment"
+                maxLength={100}
               />
-            </label>
-          </div>
-          <label className="block text-sm font-medium">
-            Start date
-            <input
-              value={draft.startDate}
-              onChange={(e) => setDraft((prev) => ({ ...prev, startDate: e.target.value }))}
-              type="date"
-              className="mt-1 w-full rounded-xl border bg-white px-3 py-2"
-            />
-          </label>
-          {type === "bnpl" ? (
-            <div className="grid grid-cols-2 gap-3">
-              <label className="block text-sm font-medium">
-                Total installments
-                <input
-                  value={draft.totalInstallments}
-                  onChange={(e) =>
-                    setDraft((prev) => ({ ...prev, totalInstallments: e.target.value }))
+            </div>
+
+            {/* Amount */}
+            <div className="space-y-2">
+              <Label htmlFor="amount" className="flex items-center gap-2">
+                <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />
+                Amount (RM)
+              </Label>
+              <Input
+                id="amount"
+                type="number"
+                min="0.01"
+                max="99999.99"
+                step="0.01"
+                value={draft.amount}
+                onChange={(e) => setDraft((prev) => ({ ...prev, amount: e.target.value }))}
+                placeholder="0.00"
+              />
+            </div>
+
+            {/* Billing Cycle & Day */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                  Billing Cycle
+                </Label>
+                <Select
+                  value={draft.billingCycle}
+                  onValueChange={(v) =>
+                    setDraft((prev) => ({ ...prev, billingCycle: v as BillingCycle }))
                   }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {cycleOptions.map((option) => (
+                      <SelectItem key={option} value={option}>
+                        {option.charAt(0).toUpperCase() + option.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Billing Day</Label>
+                <Input
                   type="number"
                   min="1"
-                  max="120"
-                  className="mt-1 w-full rounded-xl border bg-white px-3 py-2"
+                  max="31"
+                  value={draft.billingDay}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, billingDay: e.target.value }))}
                 />
-              </label>
-              <label className="block text-sm font-medium">
-                Installments paid
-                <input
-                  value={draft.installmentsPaid}
-                  onChange={(e) =>
-                    setDraft((prev) => ({ ...prev, installmentsPaid: e.target.value }))
-                  }
-                  type="number"
-                  min="0"
-                  className="mt-1 w-full rounded-xl border bg-white px-3 py-2"
-                />
-              </label>
+              </div>
             </div>
-          ) : null}
-          <label className="block text-sm font-medium">
-            Category
-            <select
-              value={draft.category}
-              onChange={(e) =>
-                setDraft((prev) => ({ ...prev, category: e.target.value as Category }))
-              }
-              className="mt-1 w-full rounded-xl border bg-white px-3 py-2"
-            >
-              {CATEGORY_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div>
-            <p className="text-sm font-medium">Color</p>
-            <div className="mt-2 flex gap-2">
-              {ITEM_COLORS.map((swatch) => (
-                <button
-                  key={swatch}
-                  type="button"
-                  onClick={() => setDraft((prev) => ({ ...prev, color: swatch }))}
-                  aria-label={`Select ${swatch}`}
-                  className={`h-8 w-8 rounded-full border-2 ${
-                    draft.color === swatch ? "border-slate-900" : "border-transparent"
-                  }`}
-                  style={{ backgroundColor: swatch }}
-                />
-              ))}
+
+            {/* Start Date */}
+            <div className="space-y-2">
+              <Label htmlFor="startDate">Start Date</Label>
+              <Input
+                id="startDate"
+                type="date"
+                value={draft.startDate}
+                onChange={(e) => setDraft((prev) => ({ ...prev, startDate: e.target.value }))}
+              />
+            </div>
+
+            {/* BNPL Only Fields */}
+            {type === "bnpl" && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="totalInstallments">Total Installments</Label>
+                  <Input
+                    id="totalInstallments"
+                    type="number"
+                    min="1"
+                    max="120"
+                    value={draft.totalInstallments}
+                    onChange={(e) =>
+                      setDraft((prev) => ({ ...prev, totalInstallments: e.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="installmentsPaid">Paid So Far</Label>
+                  <Input
+                    id="installmentsPaid"
+                    type="number"
+                    min="0"
+                    value={draft.installmentsPaid}
+                    onChange={(e) =>
+                      setDraft((prev) => ({ ...prev, installmentsPaid: e.target.value }))
+                    }
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Category */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Tag className="h-3.5 w-3.5 text-muted-foreground" />
+                Category
+              </Label>
+              <Select
+                value={draft.category}
+                onValueChange={(v) => setDraft((prev) => ({ ...prev, category: v as Category }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORY_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Color */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Palette className="h-3.5 w-3.5 text-muted-foreground" />
+                Color
+              </Label>
+              <div className="flex flex-wrap gap-2">
+                {ITEM_COLORS.map((swatch) => (
+                  <button
+                    key={swatch}
+                    type="button"
+                    onClick={() => setDraft((prev) => ({ ...prev, color: swatch }))}
+                    aria-label={`Select ${swatch}`}
+                    className={`h-8 w-8 rounded-full border-2 transition-all ${
+                      draft.color === swatch
+                        ? "border-foreground scale-110"
+                        : "border-transparent hover:scale-105"
+                    }`}
+                    style={{ backgroundColor: swatch }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div className="space-y-2">
+              <Label htmlFor="notes" className="flex items-center gap-2">
+                <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                Notes (optional)
+              </Label>
+              <Input
+                id="notes"
+                value={draft.notes}
+                onChange={(e) => setDraft((prev) => ({ ...prev, notes: e.target.value }))}
+                placeholder="Add any additional details..."
+                maxLength={500}
+              />
             </div>
           </div>
-          <label className="block text-sm font-medium">
-            Notes
-            <input
-              value={draft.notes}
-              onChange={(e) => setDraft((prev) => ({ ...prev, notes: e.target.value }))}
-              maxLength={500}
-              className="mt-1 w-full rounded-xl border bg-white px-3 py-2"
-            />
-          </label>
-        </div>
 
-        <div className="mt-6 flex gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              const parsedAmount = Number(draft.amount);
-              const parsedBillingDay = Number(draft.billingDay);
-              const parsedTotal = Number(draft.totalInstallments);
-              const parsedPaid = Number(draft.installmentsPaid);
-              if (!draft.name.trim() || parsedAmount <= 0) return;
-              if (parsedBillingDay < 1 || parsedBillingDay > 31) return;
+          <Separator className="my-5" />
 
-              onSave({
-                id: editItem?.id ?? makeId(),
-                type: draft.type,
-                name: draft.name.trim(),
-                amount: parsedAmount,
-                currency: "MYR",
-                billingCycle: draft.billingCycle,
-                billingDay: parsedBillingDay,
-                startDate: draft.startDate,
-                category: draft.category as Item["category"],
-                color: draft.color,
-                notes: draft.notes.trim(),
-                isActive: true,
-                totalInstallments: draft.type === "bnpl" ? parsedTotal : null,
-                installmentsPaid: draft.type === "bnpl" ? parsedPaid : 0,
-                paidDates: editItem?.paidDates ?? [],
-              });
-              onClose();
-            }}
-            className="flex-1 rounded-xl bg-teal-700 px-4 py-2 font-semibold text-white"
-          >
-            {editItem ? "Save changes" : "Add item"}
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl border px-4 py-2 font-semibold"
-          >
-            Cancel
-          </button>
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={onClose} className="flex-1">
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} className="flex-1">
+              {editItem ? "Save Changes" : "Add Item"}
+            </Button>
+          </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
+

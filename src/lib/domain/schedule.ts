@@ -1,4 +1,4 @@
-import type { Item, Occurrence, OccurrenceStatus } from "@/types";
+import type { Item, Occurrence, OccurrenceStatus } from "@/lib/domain/types";
 
 function startOfDay(value: Date): Date {
   const d = new Date(value);
@@ -116,3 +116,4 @@ export function getNextDueDate(item: Item, fromDate = new Date()): string | null
 export function isDueOnDate(item: Item, date: string): boolean {
   return getNextDueDate(item, new Date(date)) === date;
 }
+
