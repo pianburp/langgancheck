@@ -14,9 +14,14 @@ export async function getItemsByUserId(userId: string): Promise<Item[]> {
 
 /** Create or update an item. */
 export async function upsertItem(userId: string, data: Item): Promise<void> {
-  const exists = await itemRepo.existsById(data.id);
+  const existing = await itemRepo.findById(data.id);
 
-  if (exists) {
+  if (existing) {
+    // Ownership check — prevent IDOR
+    if (existing.userId !== userId) {
+      throw new Error("Forbidden");
+    }
+
     await itemRepo.update(data.id, {
       type: data.type,
       name: data.name,

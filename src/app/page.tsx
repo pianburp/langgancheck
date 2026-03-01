@@ -1,20 +1,17 @@
 import { DashboardClient } from "@/components/dashboard/dashboard-client";
 import { getSession } from "@/lib/session";
-import { getItems, getUserPlan } from "@/actions";
+import { getItems } from "@/actions";
 
 export default async function Home() {
   const session = await getSession();
   const isAuthenticated = Boolean(session);
 
-  const [items, plan] = isAuthenticated
-    ? await Promise.all([getItems(), getUserPlan()])
-    : [[], "free" as const];
+  const items = isAuthenticated ? await getItems() : [];
 
   return (
     <DashboardClient
       isAuthenticated={isAuthenticated}
       initialItems={items}
-      initialPlan={plan}
     />
   );
 }

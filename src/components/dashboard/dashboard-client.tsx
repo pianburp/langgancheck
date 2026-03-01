@@ -6,16 +6,14 @@ import { CalendarView } from "@/components/dashboard/calendar-view";
 import { DayDrawer } from "@/components/dashboard/day-drawer";
 import { ItemForm } from "@/components/dashboard/item-form";
 import { UpcomingSidebar } from "@/components/dashboard/upcoming-sidebar";
-import { UpgradeDialog } from "@/components/dashboard/upgrade-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
-import { FREE_ITEM_LIMIT } from "@/lib/constants";
 import { getOccurrencesForMonth } from "@/lib/domain/schedule";
-import { upsertItem, markItemPaid, upgradeUserPlan } from "@/actions";
+import { upsertItem, markItemPaid } from "@/actions";
 
-import type { Item, PlanTier } from "@/lib/domain/types";
+import type { Item } from "@/lib/domain/types";
 import {
   CalendarDays,
   Plus,
@@ -25,22 +23,18 @@ import {
 interface DashboardClientProps {
   isAuthenticated: boolean;
   initialItems?: Item[];
-  initialPlan?: PlanTier;
 }
 
 export function DashboardClient({
   isAuthenticated,
   initialItems = [],
-  initialPlan = "free",
 }: DashboardClientProps) {
   const [items, setItems] = useState<Item[]>(initialItems);
-  const [plan, setPlan] = useState<PlanTier>(initialPlan);
   const [monthDate, setMonthDate] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editItem, setEditItem] = useState<Item | null>(null);
   const [formNonce, setFormNonce] = useState(0);
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
 
 
   const occurrences = useMemo(
@@ -83,14 +77,10 @@ export function DashboardClient({
       signInWithGoogle();
       return;
     }
-    if (plan === "free" && items.length >= FREE_ITEM_LIMIT) {
-      setUpgradeOpen(true);
-      return;
-    }
     setEditItem(null);
     setFormNonce((n) => n + 1);
     setFormOpen(true);
-  }, [isAuthenticated, plan, items.length]);
+  }, [isAuthenticated]);
 
   const onSave = useCallback(
     async (item: Item) => {
@@ -165,14 +155,6 @@ export function DashboardClient({
           <p className="mt-1 text-sm text-muted-foreground">
             {isAuthenticated ? (
               <span className="flex items-center gap-2">
-                Plan:
-                <Badge
-                  variant={plan === "pro" ? "pro" : "secondary"}
-                  className="text-xs font-normal uppercase"
-                >
-                  {plan}
-                </Badge>
-                <span className="text-border">|</span>
                 <span>{items.length} {items.length === 1 ? "item" : "items"}</span>
               </span>
             ) : (
@@ -248,24 +230,6 @@ export function DashboardClient({
           setEditItem(item);
           setFormNonce((n) => n + 1);
           setFormOpen(true);
-        }}
-      />
-      <UpgradeDialog
-        open={upgradeOpen}
-        itemCount={items.length}
-        onClose={() => setUpgradeOpen(false)}
-        onUpgrade={async () => {
-          if (!isAuthenticated) {
-            signInWithGoogle();
-            return;
-          }
-          setPlan("pro");
-          setUpgradeOpen(false);
-          try {
-            await upgradeUserPlan();
-          } catch {
-            setPlan("free");
-          }
         }}
       />
     </div>

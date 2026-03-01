@@ -23,3 +23,15 @@ export async function getSessionEmail(): Promise<string | null> {
   const user = await getSessionUser();
   return user?.email ?? null;
 }
+
+/**
+ * Require an authenticated session or throw.
+ * Use this at the top of every mutating server action.
+ */
+export async function requireAuth() {
+  const session = await getSession();
+  if (!session?.user?.id) {
+    throw new Error("Unauthorized");
+  }
+  return session.user;
+}

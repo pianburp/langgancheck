@@ -1,7 +1,5 @@
 import type { Category } from "@/lib/domain/types";
 
-export const FREE_ITEM_LIMIT = 3;
-
 export const CATEGORY_OPTIONS: { value: Category; label: string }[] = [
   { value: "entertainment", label: "Entertainment" },
   { value: "food", label: "Food" },

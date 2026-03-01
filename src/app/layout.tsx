@@ -3,6 +3,7 @@ import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { getSession } from "@/lib/session";
 import { Navbar } from "@/components/layout/navbar";
+import { OneTapPrompt } from "@/components/auth/auth-button";
 
 export const metadata: Metadata = {
   title: "GajiGuard — Subscription & BNPL Tracker",
@@ -23,6 +24,7 @@ export default async function RootLayout({
         <TooltipProvider delayDuration={0}>
           <div className="flex min-h-screen flex-col">
             <Navbar isAuthenticated={isAuthenticated} email={session?.user?.email} />
+            {!isAuthenticated && <OneTapPrompt />}
             <main className="flex-1">{children}</main>
             <footer className="text-center text-sm text-muted-foreground py-4">
               Credit to fiansuf@gmail.com

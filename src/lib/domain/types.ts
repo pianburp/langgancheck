@@ -12,7 +12,6 @@ export type Category =
   | "utilities"
   | "other";
 
-export type PlanTier = "free" | "pro";
 export type OccurrenceStatus = "upcoming" | "paid" | "missed";
 
 export interface Item {
