@@ -6,7 +6,7 @@ import { Navbar } from "@/components/layout/navbar";
 import { OneTapPrompt } from "@/components/auth/auth-button";
 
 export const metadata: Metadata = {
-  title: "GajiGuard — Subscription & BNPL Tracker",
+  title: "Keepduit — Subscription & BNPL Tracker",
   description: "Track subscriptions and BNPL commitments with a monthly calendar view.",
 };
 

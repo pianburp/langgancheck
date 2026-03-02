@@ -5,7 +5,7 @@ export const authClient = createAuthClient({
   plugins: [
     oneTapClient({
       clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
-      cancelOnTapOutside: true,
+      cancelOnTapOutside: false,
       autoSelect: true,
       context: "signin",
     }),

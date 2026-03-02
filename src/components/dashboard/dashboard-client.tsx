@@ -7,15 +7,12 @@ import { DayDrawer } from "@/components/dashboard/day-drawer";
 import { ItemForm } from "@/components/dashboard/item-form";
 import { UpcomingSidebar } from "@/components/dashboard/upcoming-sidebar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 
 import { getOccurrencesForMonth } from "@/lib/domain/schedule";
 import { upsertItem, markItemPaid } from "@/actions";
 
 import type { Item } from "@/lib/domain/types";
 import {
-  CalendarDays,
   Plus,
   CalendarFold,
 } from "lucide-react";
@@ -187,25 +184,6 @@ export function DashboardClient({
         />
       </div>
 
-      {/* Empty State */}
-      {items.length === 0 && (
-        <Card className="mt-6 border border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-              <CalendarDays className="h-6 w-6 text-muted-foreground" />
-            </div>
-            <h3 className="mt-4 font-semibold">No subscriptions yet</h3>
-            <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-              Add your first subscription or BNPL commitment to start tracking
-              your monthly payments.
-            </p>
-            <Button onClick={onAddClick} className="mt-4 gap-1.5">
-              <Plus className="h-4 w-4" />
-              Add your first item
-            </Button>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Modals */}
       <ItemForm
