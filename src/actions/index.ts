@@ -1,1 +1,1 @@
-export { getItems, upsertItem, markItemPaid } from "./item.actions";
+export { getItems, upsertItem, markItemPaid, deleteItem } from "./item.actions";

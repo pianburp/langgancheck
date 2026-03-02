@@ -98,6 +98,8 @@ export const item = pgTable("item", {
   color: text("color").notNull(),
   notes: text("notes").notNull().default(""),
   isActive: boolean("is_active").notNull().default(true),
+  isShariah: boolean("is_shariah").notNull().default(false),
+  interestRate: real("interest_rate").notNull().default(0),
   totalInstallments: integer("total_installments"),
   installmentsPaid: integer("installments_paid").notNull().default(0),
   paidDates: json("paid_dates").$type<string[]>().notNull().default([]),

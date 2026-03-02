@@ -45,6 +45,8 @@ export async function insert(userId: string, data: Item) {
     color: data.color,
     notes: data.notes,
     isActive: data.isActive,
+    isShariah: data.isShariah,
+    interestRate: data.interestRate,
     totalInstallments: data.totalInstallments,
     installmentsPaid: data.installmentsPaid,
     paidDates: data.paidDates,
@@ -77,6 +79,8 @@ export async function update(
     color: string;
     notes: string;
     isActive: boolean;
+    isShariah: boolean;
+    interestRate: number;
     totalInstallments: number | null;
     installmentsPaid: number;
     paidDates: string[];
@@ -88,3 +92,7 @@ export async function update(
     .where(eq(itemTable.id, id));
 }
 
+/** Delete an item by its primary key. */
+export async function deleteById(id: string) {
+  await db.delete(itemTable).where(eq(itemTable.id, id));
+}

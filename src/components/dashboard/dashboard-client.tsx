@@ -7,14 +7,18 @@ import { DayDrawer } from "@/components/dashboard/day-drawer";
 import { ItemForm } from "@/components/dashboard/item-form";
 import { UpcomingSidebar } from "@/components/dashboard/upcoming-sidebar";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 import { getOccurrencesForMonth } from "@/lib/domain/schedule";
-import { upsertItem, markItemPaid } from "@/actions";
+import { upsertItem, markItemPaid, deleteItem } from "@/actions";
+import { formatRM } from "@/lib/format";
 
 import type { Item } from "@/lib/domain/types";
 import {
   Plus,
   CalendarFold,
+  AlertTriangle,
+  X,
 } from "lucide-react";
 
 interface DashboardClientProps {
@@ -32,6 +36,7 @@ export function DashboardClient({
   const [formOpen, setFormOpen] = useState(false);
   const [editItem, setEditItem] = useState<Item | null>(null);
   const [formNonce, setFormNonce] = useState(0);
+  const [overdueDismissed, setOverdueDismissed] = useState(false);
 
 
   const occurrences = useMemo(
@@ -61,6 +66,14 @@ export function DashboardClient({
         .reduce((acc, curr) => acc + curr.amount, 0),
     [occurrences],
   );
+
+  const overdueInfo = useMemo(() => {
+    const missed = occurrences.filter((o) => o.status === "missed");
+    return {
+      count: missed.length,
+      total: missed.reduce((acc, curr) => acc + curr.amount, 0),
+    };
+  }, [occurrences]);
 
   const signInWithGoogle = () => {
     authClient.signIn.social({
@@ -140,6 +153,28 @@ export function DashboardClient({
     [isAuthenticated, items],
   );
 
+  const onDelete = useCallback(
+    async (itemId: string) => {
+      if (!isAuthenticated) {
+        signInWithGoogle();
+        return;
+      }
+
+      // Optimistic removal
+      const prev = items;
+      setItems((current) => current.filter((item) => item.id !== itemId));
+      setSelectedDate(null);
+
+      try {
+        const ok = await deleteItem(itemId);
+        if (!ok) setItems(prev);
+      } catch {
+        setItems(prev);
+      }
+    },
+    [isAuthenticated, items],
+  );
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
       {/* Header */}
@@ -166,6 +201,30 @@ export function DashboardClient({
           </Button>
         </div>
       </div>
+
+      {/* Overdue Alert Banner */}
+      {isAuthenticated && overdueInfo.count > 0 && !overdueDismissed && (
+        <Alert variant="destructive" className="mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                You have <strong>{overdueInfo.count}</strong> overdue{" "}
+                {overdueInfo.count === 1 ? "payment" : "payments"} totalling{" "}
+                <strong>{formatRM(overdueInfo.total)}</strong>
+              </AlertDescription>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0 hover:bg-destructive/20"
+              onClick={() => setOverdueDismissed(true)}
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </Alert>
+      )}
 
       {/* Main Content */}
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_300px]">
@@ -209,6 +268,7 @@ export function DashboardClient({
           setFormNonce((n) => n + 1);
           setFormOpen(true);
         }}
+        onDelete={onDelete}
       />
     </div>
   );

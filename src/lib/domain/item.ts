@@ -15,6 +15,8 @@ export type ItemRow = {
   color: string;
   notes: string;
   isActive: boolean;
+  isShariah: boolean;
+  interestRate: number;
   totalInstallments: number | null;
   installmentsPaid: number;
   paidDates: string[];
@@ -36,6 +38,8 @@ export function toItem(row: ItemRow): Item {
     color: row.color,
     notes: row.notes,
     isActive: row.isActive,
+    isShariah: row.isShariah,
+    interestRate: row.interestRate,
     totalInstallments: row.totalInstallments,
     installmentsPaid: row.installmentsPaid,
     paidDates: row.paidDates,

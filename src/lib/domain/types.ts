@@ -28,6 +28,8 @@ export interface Item {
   color: string;
   notes: string;
   isActive: boolean;
+  isShariah: boolean;
+  interestRate: number;
   totalInstallments: number | null;
   installmentsPaid: number;
   paidDates: string[];

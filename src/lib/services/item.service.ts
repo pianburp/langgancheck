@@ -35,6 +35,8 @@ export async function upsertItem(userId: string, data: Item): Promise<void> {
       color: data.color,
       notes: data.notes,
       isActive: data.isActive,
+      isShariah: data.isShariah,
+      interestRate: data.interestRate,
       totalInstallments: data.totalInstallments,
       installmentsPaid: data.installmentsPaid,
       paidDates: data.paidDates,
@@ -68,4 +70,19 @@ export async function markItemPaid(
 
   const updated = await itemRepo.findById(itemId);
   return updated ? toItem(updated) : null;
+}
+
+/** Delete an item. Returns false if the item doesn't exist or user doesn't own it. */
+export async function deleteItem(
+  itemId: string,
+  userId: string,
+): Promise<boolean> {
+  const row = await itemRepo.findById(itemId);
+  if (!row) return false;
+
+  // Ownership check — prevent IDOR
+  if (row.userId !== userId) return false;
+
+  await itemRepo.deleteById(itemId);
+  return true;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -23,12 +23,22 @@ import { Separator } from "@/components/ui/separator";
 import { CATEGORY_OPTIONS, ITEM_COLORS } from "@/lib/constants";
 import { toLocalDateKey } from "@/lib/date";
 import {
-  RECOGNIZED_SUBSCRIPTIONS,
   findRecognizedSubscriptionByName,
   getBrandfetchIconUrl,
+  searchRecognizedSubscriptions,
+  searchBnplSubscriptions,
 } from "@/lib/brandfetch";
 import type { BillingCycle, Category, Item, ItemType } from "@/lib/domain/types";
-import { CreditCard, Package, Calendar, Tag, FileText, Palette, Store } from "lucide-react";
+import { Checkbox } from "@/components/animate-ui/components/headless/checkbox";
+import {
+  Calendar,
+  CreditCard,
+  FileText,
+  Package,
+  Palette,
+  Percent,
+  Tag,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BrandIcon } from "@/components/dashboard/brand-icon";
 
@@ -44,7 +54,7 @@ function todayDate(): string {
 }
 
 function makeId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  return crypto.randomUUID();
 }
 
 type ItemDraft = {
@@ -59,6 +69,8 @@ type ItemDraft = {
   category: Category;
   color: string;
   notes: string;
+  isShariah: boolean;
+  interestRate: string;
   totalInstallments: string;
   installmentsPaid: string;
 };
@@ -80,6 +92,8 @@ function toDraft(editItem: Item | null): ItemDraft {
     category: editItem?.category ?? "other",
     color: editItem?.color ?? ITEM_COLORS[0],
     notes: editItem?.notes ?? "",
+    isShariah: editItem?.isShariah ?? false,
+    interestRate: String(editItem?.interestRate ?? 0),
     totalInstallments: String(editItem?.totalInstallments ?? 6),
     installmentsPaid: String(editItem?.installmentsPaid ?? 0),
   };
@@ -87,30 +101,108 @@ function toDraft(editItem: Item | null): ItemDraft {
 
 export function ItemForm({ open, onClose, onSave, editItem }: ItemFormProps) {
   const [draft, setDraft] = useState(() => toDraft(editItem));
+  const [errors, setErrors] = useState<{
+    billingDay?: string;
+    totalInstallments?: string;
+    installmentsPaid?: string;
+    interestRate?: string;
+  }>({});
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const nameWrapperRef = useRef<HTMLDivElement>(null);
   const { type } = draft;
+  const trimmedName = draft.name.trim();
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (nameWrapperRef.current && !nameWrapperRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const cycleOptions = useMemo(() => {
     if (type === "bnpl") return ["weekly", "biweekly", "monthly"] as const;
     return ["weekly", "monthly", "yearly"] as const;
   }, [type]);
 
+  const nameSuggestions = useMemo(() => {
+    if (!trimmedName) return [];
+    if (type === "bnpl") return searchBnplSubscriptions(trimmedName, 4);
+    return searchRecognizedSubscriptions(trimmedName, 6);
+  }, [type, trimmedName]);
+
+  useEffect(() => {
+    const value = draft.billingDay.trim();
+    if (!value) {
+      setErrors((prev) => ({ ...prev, billingDay: "Billing day is required." }));
+      return;
+    }
+
+    const parsed = Number(value);
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 31) {
+      setErrors((prev) => ({
+        ...prev,
+        billingDay: "Billing day must be a whole number between 1 and 31.",
+      }));
+      return;
+    }
+
+    setErrors((prev) => ({ ...prev, billingDay: undefined }));
+  }, [draft.billingDay]);
+
   const handleSubmit = () => {
     const parsedAmount = Number(draft.amount);
     const parsedBillingDay = Number(draft.billingDay);
     const parsedTotal = Number(draft.totalInstallments);
     const parsedPaid = Number(draft.installmentsPaid);
-    
+    const parsedInterestRate = Number(draft.interestRate);
+    const nextErrors: typeof errors = {};
+
     if (!draft.name.trim() || parsedAmount <= 0) return;
-    if (parsedBillingDay < 1 || parsedBillingDay > 31) return;
+    if (
+      !Number.isInteger(parsedBillingDay) ||
+      parsedBillingDay < 1 ||
+      parsedBillingDay > 31
+    ) {
+      nextErrors.billingDay = "Billing day must be a whole number between 1 and 31.";
+    }
+    if (draft.type === "bnpl") {
+      if (!Number.isInteger(parsedTotal) || parsedTotal < 1) {
+        nextErrors.totalInstallments =
+          "Total installments must be a whole number of at least 1.";
+      }
+      if (!Number.isInteger(parsedPaid) || parsedPaid < 0) {
+        nextErrors.installmentsPaid =
+          "Installments paid must be a whole number of at least 0.";
+      }
+      if (
+        Number.isInteger(parsedTotal) &&
+        Number.isInteger(parsedPaid) &&
+        parsedPaid > parsedTotal
+      ) {
+        nextErrors.installmentsPaid =
+          "Installments paid cannot be greater than total installments.";
+      }
+      if (!draft.isShariah) {
+        if (!Number.isFinite(parsedInterestRate) || parsedInterestRate < 0 || parsedInterestRate > 100) {
+          nextErrors.interestRate = "Interest must be between 0 and 100%.";
+        }
+      }
+    }
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
+      return;
+    }
+    setErrors({});
 
     onSave({
       id: editItem?.id ?? makeId(),
       type: draft.type,
       name: draft.name.trim(),
-      brandIconUrl:
-        draft.type === "subscription" && draft.brandIconUrl
-          ? draft.brandIconUrl
-          : null,
+      brandIconUrl: draft.brandIconUrl || null,
       amount: parsedAmount,
       currency: "MYR",
       billingCycle: draft.billingCycle,
@@ -120,6 +212,9 @@ export function ItemForm({ open, onClose, onSave, editItem }: ItemFormProps) {
       color: draft.color,
       notes: draft.notes.trim(),
       isActive: true,
+      isShariah: draft.type === "bnpl" ? draft.isShariah : false,
+      interestRate:
+        draft.type === "bnpl" && !draft.isShariah ? parsedInterestRate : 0,
       totalInstallments: draft.type === "bnpl" ? parsedTotal : null,
       installmentsPaid: draft.type === "bnpl" ? parsedPaid : 0,
       paidDates: editItem?.paidDates ?? [],
@@ -133,8 +228,8 @@ export function ItemForm({ open, onClose, onSave, editItem }: ItemFormProps) {
         <DialogHeader className="px-6 pt-6 pb-4">
           <DialogTitle className="text-lg">{editItem ? "Edit Item" : "Add New Item"}</DialogTitle>
           <DialogDescription>
-            {editItem 
-              ? "Update your subscription or BNPL details." 
+            {editItem
+              ? "Update your subscription or BNPL details."
               : "Track a new subscription or buy now, pay later commitment."}
           </DialogDescription>
         </DialogHeader>
@@ -169,80 +264,69 @@ export function ItemForm({ open, onClose, onSave, editItem }: ItemFormProps) {
           <Separator />
 
           <div className="space-y-4">
-            {/* Name */}
+            {/* Name with autocomplete */}
             <div className="space-y-2">
               <Label htmlFor="name" className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 <Tag className="h-3 w-3" />
                 Name
               </Label>
-              <Input
-                id="name"
-                value={draft.name}
-                onChange={(e) => {
-                  const nextName = e.target.value;
-                  const recognized = findRecognizedSubscriptionByName(nextName);
-                  setDraft((prev) => ({
-                    ...prev,
-                    name: nextName,
-                    recognizedDomain: recognized?.domain ?? "",
-                    brandIconUrl: recognized ? getBrandfetchIconUrl(recognized.domain) : "",
-                  }));
-                }}
-                placeholder="e.g., Netflix, iPhone Installment"
-                maxLength={100}
-              />
-            </div>
-
-            {type === "subscription" && (
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  <Store className="h-3 w-3" />
-                  Recognized Subscription
-                </Label>
+              <div ref={nameWrapperRef} className="relative">
                 <div className="flex items-center gap-2">
-                  <Select
-                    value={draft.recognizedDomain || "__none__"}
-                    onValueChange={(value) => {
-                      if (value === "__none__") {
+                  <div className="relative flex-1">
+                    <Input
+                      id="name"
+                      value={draft.name}
+                      onChange={(e) => {
+                        const nextName = e.target.value;
                         setDraft((prev) => ({
                           ...prev,
+                          name: nextName,
                           recognizedDomain: "",
                           brandIconUrl: "",
                         }));
-                        return;
-                      }
-                      const selected = RECOGNIZED_SUBSCRIPTIONS.find(
-                        (option) => option.domain === value,
-                      );
-                      if (!selected) return;
-                      setDraft((prev) => ({
-                        ...prev,
-                        name: selected.name,
-                        recognizedDomain: selected.domain,
-                        brandIconUrl: getBrandfetchIconUrl(selected.domain),
-                      }));
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pick a brand to auto-add icon" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">None</SelectItem>
-                      {RECOGNIZED_SUBSCRIPTIONS.map((subscription) => (
-                        <SelectItem key={subscription.domain} value={subscription.domain}>
-                          {subscription.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                        setShowSuggestions(true);
+                      }}
+                      onFocus={() => setShowSuggestions(true)}
+                      placeholder={type === "bnpl" ? "e.g., Atome, Grab PayLater" : "e.g., Netflix, Spotify"}
+                      maxLength={100}
+                      autoComplete="off"
+                    />
+                  </div>
                   <BrandIcon
                     name={draft.name || "brand"}
                     iconUrl={draft.brandIconUrl}
                     className="h-9 w-9"
                   />
                 </div>
+                {showSuggestions && nameSuggestions.length > 0 && (
+                  <div className="absolute left-0 right-9 top-full z-50 mt-1 max-h-52 overflow-y-auto rounded-md border bg-popover p-1 shadow-md">
+                    {nameSuggestions.map((subscription) => (
+                      <button
+                        key={`${subscription.domain}-${subscription.name}`}
+                        type="button"
+                        className="flex w-full items-center gap-2.5 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent transition-colors"
+                        onClick={() => {
+                          setDraft((prev) => ({
+                            ...prev,
+                            name: subscription.name,
+                            recognizedDomain: subscription.domain,
+                            brandIconUrl: getBrandfetchIconUrl(subscription.domain),
+                          }));
+                          setShowSuggestions(false);
+                        }}
+                      >
+                        <BrandIcon
+                          name={subscription.name}
+                          iconUrl={getBrandfetchIconUrl(subscription.domain)}
+                          className="h-6 w-6"
+                        />
+                        <span>{subscription.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
 
             {/* Amount */}
             <div className="space-y-2">
@@ -294,8 +378,14 @@ export function ItemForm({ open, onClose, onSave, editItem }: ItemFormProps) {
                   min="1"
                   max="31"
                   value={draft.billingDay}
-                  onChange={(e) => setDraft((prev) => ({ ...prev, billingDay: e.target.value }))}
+                  onChange={(e) => {
+                    setDraft((prev) => ({ ...prev, billingDay: e.target.value }));
+                  }}
+                  aria-invalid={Boolean(errors.billingDay)}
                 />
+                {errors.billingDay && (
+                  <p className="text-xs text-destructive">{errors.billingDay}</p>
+                )}
               </div>
             </div>
 
@@ -312,32 +402,92 @@ export function ItemForm({ open, onClose, onSave, editItem }: ItemFormProps) {
 
             {/* BNPL Only Fields */}
             {type === "bnpl" && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="totalInstallments" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Total Installments</Label>
-                  <Input
-                    id="totalInstallments"
-                    type="number"
-                    min="1"
-                    max="120"
-                    value={draft.totalInstallments}
-                    onChange={(e) =>
-                      setDraft((prev) => ({ ...prev, totalInstallments: e.target.value }))
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="totalInstallments" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Total Installments</Label>
+                    <Input
+                      id="totalInstallments"
+                      type="number"
+                      min="1"
+                      max="120"
+                      value={draft.totalInstallments}
+                      onChange={(e) => {
+                        setDraft((prev) => ({ ...prev, totalInstallments: e.target.value }));
+                        setErrors((prev) => ({ ...prev, totalInstallments: undefined }));
+                      }}
+                    />
+                    {errors.totalInstallments && (
+                      <p className="text-xs text-destructive">{errors.totalInstallments}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="installmentsPaid" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Installments Paid (count)
+                    </Label>
+                    <Input
+                      id="installmentsPaid"
+                      type="number"
+                      min="0"
+                      value={draft.installmentsPaid}
+                      onChange={(e) => {
+                        setDraft((prev) => ({ ...prev, installmentsPaid: e.target.value }));
+                        setErrors((prev) => ({ ...prev, installmentsPaid: undefined }));
+                      }}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      This is number of installments paid, not total RM amount.
+                    </p>
+                    {errors.installmentsPaid && (
+                      <p className="text-xs text-destructive">{errors.installmentsPaid}</p>
+                    )}
+                  </div>
+                </div>
+                <label className="flex items-center gap-2 rounded-md border p-3">
+                  <Checkbox
+                    checked={draft.isShariah}
+                    onChange={(checked) =>
+                      setDraft((prev) => ({
+                        ...prev,
+                        isShariah: Boolean(checked),
+                        interestRate: checked ? "0" : prev.interestRate,
+                      }))
                     }
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="installmentsPaid" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Paid So Far</Label>
-                  <Input
-                    id="installmentsPaid"
-                    type="number"
-                    min="0"
-                    value={draft.installmentsPaid}
-                    onChange={(e) =>
-                      setDraft((prev) => ({ ...prev, installmentsPaid: e.target.value }))
-                    }
-                  />
-                </div>
+                  <span className="text-sm">Shariah-compliant plan</span>
+                </label>
+                {!draft.isShariah && (
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="interestRate"
+                      className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                    >
+                      <Percent className="h-3 w-3" />
+                      Interest (%)
+                    </Label>
+                    <Input
+                      id="interestRate"
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      value={draft.interestRate}
+                      onChange={(e) => {
+                        setDraft((prev) => ({ ...prev, interestRate: e.target.value }));
+                        setErrors((prev) => ({ ...prev, interestRate: undefined }));
+                      }}
+                      placeholder="0"
+                    />
+                    {errors.interestRate && (
+                      <p className="text-xs text-destructive">{errors.interestRate}</p>
+                    )}
+                  </div>
+                )}
+                {draft.isShariah && (
+                  <p className="text-xs text-muted-foreground">
+                    Interest is hidden and set to 0% for Shariah-compliant plans.
+                  </p>
+                )}
               </div>
             )}
 
@@ -420,3 +570,4 @@ export function ItemForm({ open, onClose, onSave, editItem }: ItemFormProps) {
     </Dialog>
   );
 }
+

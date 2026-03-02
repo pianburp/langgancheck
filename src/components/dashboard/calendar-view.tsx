@@ -109,15 +109,15 @@ export function CalendarView({
   };
 
   return (
-    <div className="h-full flex flex-col bg-white rounded-xl shadow-sm border border-gray-200/60 overflow-hidden">
+    <div className="h-full flex flex-col bg-white dark:bg-[#1c1c1e] rounded-xl shadow-sm border border-gray-200/60 dark:border-white/10 overflow-hidden">
       {/* Header - Apple Calendar Style */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-white/10">
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
             size="sm"
             onClick={handleTodayClick}
-            className="text-[#ff3b30] hover:text-[#ff3b30]/80 hover:bg-[#ff3b30]/5 font-medium text-sm"
+            className="text-[#ff3b30] hover:text-[#ff3b30]/80 hover:bg-[#ff3b30]/5 dark:hover:bg-[#ff3b30]/15 font-medium text-sm"
           >
             Today
           </Button>
@@ -126,7 +126,7 @@ export function CalendarView({
               variant="ghost"
               size="icon"
               onClick={handlePrevMonth}
-              className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+              className="h-7 w-7 text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-200 hover:bg-gray-100 dark:hover:bg-white/10"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -134,26 +134,28 @@ export function CalendarView({
               variant="ghost"
               size="icon"
               onClick={handleNextMonth}
-              className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+              className="h-7 w-7 text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-200 hover:bg-gray-100 dark:hover:bg-white/10"
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
         </div>
         
-        <h2 className="text-lg font-semibold text-gray-900">
-          {monthLabel} <span className="font-normal text-gray-500">{yearLabel}</span>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-zinc-100">
+          {monthLabel} <span className="font-normal text-gray-500 dark:text-zinc-400">{yearLabel}</span>
         </h2>
       </div>
 
       {/* Week Day Headers */}
-      <div className="grid grid-cols-7 border-b border-gray-100 bg-white">
+      <div className="grid grid-cols-7 border-b border-gray-100 dark:border-white/10 bg-white dark:bg-[#1c1c1e]">
         {weekDays.map((day, index) => (
           <div
             key={day}
             className={cn(
               "py-2 text-center text-[11px] font-medium uppercase tracking-wide",
-              index === 0 || index === 6 ? "text-gray-400" : "text-gray-500"
+              index === 0 || index === 6
+                ? "text-gray-400 dark:text-zinc-500"
+                : "text-gray-500 dark:text-zinc-400"
             )}
           >
             {day}
@@ -183,12 +185,12 @@ export function CalendarView({
               onClick={() => handleDateClick(dateKey)}
               className={cn(
                 "relative flex flex-col items-start p-1.5 text-left transition-all duration-150",
-                "border-r border-b border-gray-100",
-                "hover:bg-gray-50",
-                !inMonth && "bg-gray-50/50",
+                "border-r border-b border-gray-100 dark:border-white/10",
+                "hover:bg-gray-50 dark:hover:bg-white/5",
+                !inMonth && "bg-gray-50/50 dark:bg-white/[0.03]",
                 isLastCol && "border-r-0",
                 isLastRow && "border-b-0",
-                isSelected && "bg-[#fff5f5] hover:bg-[#fff0f0]",
+                isSelected && "bg-[#fff5f5] hover:bg-[#fff0f0] dark:bg-[#3a1c1a] dark:hover:bg-[#4a2321]",
                 // Subtle rounded corners for the grid edges
                 isFirstRow && isFirstCol && "rounded-tl-xl",
                 isFirstRow && isLastCol && "rounded-tr-xl",
@@ -200,11 +202,11 @@ export function CalendarView({
               <span
                 className={cn(
                   "flex h-6 w-6 items-center justify-center text-[13px] font-normal",
-                  !inMonth && "text-gray-300",
-                  inMonth && isWeekend && !isToday && "text-gray-500",
-                  inMonth && !isWeekend && !isToday && "text-gray-900",
-                  isToday && "rounded-full bg-[#ff3b30] font-medium text-white shadow-sm",
-                  isSelected && !isToday && inMonth && "text-gray-900"
+                  !inMonth && "text-gray-300 dark:text-zinc-600",
+                  inMonth && isWeekend && !isToday && "text-gray-500 dark:text-zinc-400",
+                  inMonth && !isWeekend && !isToday && "text-gray-900 dark:text-zinc-100",
+                  isToday && "rounded-full bg-[#ff3b30] font-medium text-white shadow-sm shadow-[#ff3b30]/30",
+                  isSelected && !isToday && inMonth && "text-gray-900 dark:text-zinc-100"
                 )}
               >
                 {date.getDate()}
@@ -230,7 +232,7 @@ export function CalendarView({
                             iconUrl={item?.brandIconUrl}
                             className="h-3.5 w-3.5 rounded-[2px] flex-shrink-0"
                           />
-                          <span className="text-[10px] text-gray-600 truncate leading-tight">
+                          <span className="text-[10px] text-gray-600 dark:text-zinc-300 truncate leading-tight">
                             {item?.name}
                           </span>
                         </div>
@@ -245,15 +247,15 @@ export function CalendarView({
                         <span
                           className={cn(
                             "h-1.5 w-1.5 rounded-full flex-shrink-0",
-                            isPaid && "bg-gray-300",
+                            isPaid && "bg-gray-300 dark:bg-zinc-600",
                             isMissed && "bg-[#ff3b30]/70",
-                            !isPaid && !isMissed && "bg-gray-400"
+                            !isPaid && !isMissed && "bg-gray-400 dark:bg-zinc-500"
                           )}
                           style={{
                             backgroundColor: !isPaid && !isMissed ? item?.color : undefined,
                           }}
                         />
-                        <span className="text-[10px] text-gray-600 truncate leading-tight">
+                        <span className="text-[10px] text-gray-600 dark:text-zinc-300 truncate leading-tight">
                           {item?.name}
                         </span>
                       </div>
@@ -261,8 +263,8 @@ export function CalendarView({
                   })}
                   {dayItems.length > 3 && (
                     <div className="flex items-center gap-1 py-[1px]">
-                      <span className="h-1 w-1 rounded-full bg-gray-300" />
-                      <span className="text-[9px] text-gray-400">
+                      <span className="h-1 w-1 rounded-full bg-gray-300 dark:bg-zinc-600" />
+                      <span className="text-[9px] text-gray-400 dark:text-zinc-500">
                         +{dayItems.length - 3} more
                       </span>
                     </div>

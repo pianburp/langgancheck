@@ -1,12 +1,21 @@
+import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatRM } from "@/lib/format";
 import type { Item, Occurrence } from "@/lib/domain/types";
-import { Check, Pencil, CreditCard, Package, Calendar } from "lucide-react";
+import { Check, Pencil, Trash2, CreditCard, Package, Calendar } from "lucide-react";
 import { BrandIcon } from "@/components/dashboard/brand-icon";
+import { cn } from "@/lib/utils";
 
 interface DayDrawerProps {
   date: string | null;
@@ -16,6 +25,7 @@ interface DayDrawerProps {
   onClose: () => void;
   onMarkPaid: (itemId: string, date: string) => void;
   onEdit: (item: Item) => void;
+  onDelete: (itemId: string) => void;
 }
 
 function formatDate(dateStr: string): string {
@@ -36,7 +46,17 @@ export function DayDrawer({
   onClose,
   onMarkPaid,
   onEdit,
+  onDelete,
 }: DayDrawerProps) {
+  const [deleteTarget, setDeleteTarget] = useState<Item | null>(null);
+
+  const handleConfirmDelete = () => {
+    if (deleteTarget) {
+      onDelete(deleteTarget.id);
+      setDeleteTarget(null);
+    }
+  };
+
   const totalDue = occurrences
     .filter((o) => o.status !== "paid")
     .reduce((acc, curr) => acc + curr.amount, 0);
@@ -97,7 +117,21 @@ export function DayDrawer({
                               style={{ backgroundColor: item.color }}
                             />
                           )}
-                          <h4 className="truncate font-medium">{item.name}</h4>
+                          <h4
+                            className={cn(
+                              "truncate font-medium",
+                              isPaid && "text-muted-foreground line-through",
+                            )}
+                          >
+                            {item.name}
+                          </h4>
+                          {isMissed && (
+                            <span
+                              className="h-2 w-2 shrink-0 rounded-full bg-destructive"
+                              aria-label="Missed payment"
+                              title="Missed payment"
+                            />
+                          )}
                         </div>
                         <div className="mt-2 flex items-center gap-2">
                           <Badge variant="outline" className="gap-1 text-xs font-normal">
@@ -107,14 +141,6 @@ export function DayDrawer({
                               <CreditCard className="h-3 w-3" />
                             )}
                             {isBnpl ? "BNPL" : "Subscription"}
-                          </Badge>
-                          <Badge
-                            variant={
-                              isPaid ? "secondary" : isMissed ? "destructive" : "default"
-                            }
-                            className="text-xs font-normal"
-                          >
-                            {occurrence.status}
                           </Badge>
                         </div>
                       </div>
@@ -147,24 +173,35 @@ export function DayDrawer({
                       </div>
                     )}
 
-                    <div className="mt-3 flex gap-2">
+                    <div className="mt-3 flex justify-end gap-2">
                       <Button
-                        size="sm"
+                        size="icon-sm"
+                        variant="secondary"
                         onClick={() => onMarkPaid(item.id, date!)}
                         disabled={isPaid}
-                        className="gap-1.5"
+                        aria-label={isPaid ? "Paid" : "Mark paid"}
+                        title={isPaid ? "Paid" : "Mark paid"}
                       >
                         <Check className="h-3.5 w-3.5" />
-                        {isPaid ? "Paid" : "Mark Paid"}
                       </Button>
                       <Button
-                        size="sm"
+                        size="icon-sm"
                         variant="outline"
                         onClick={() => onEdit(item)}
-                        className="gap-1.5"
+                        aria-label="Edit subscription"
+                        title="Edit subscription"
                       >
                         <Pencil className="h-3.5 w-3.5" />
-                        Edit
+                      </Button>
+                      <Button
+                        size="icon-sm"
+                        variant="outline"
+                        onClick={() => setDeleteTarget(item)}
+                        className="text-destructive hover:text-destructive"
+                        aria-label="Delete subscription"
+                        title="Delete subscription"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </div>
@@ -184,6 +221,26 @@ export function DayDrawer({
           </>
         )}
       </SheetContent>
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete {deleteTarget?.name}?</DialogTitle>
+            <DialogDescription>
+              This will permanently remove this item and all its payment history. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" size="sm" onClick={() => setDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" size="sm" onClick={handleConfirmDelete}>
+              Delete
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Sheet>
   );
 }

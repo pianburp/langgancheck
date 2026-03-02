@@ -29,6 +29,13 @@
       "when": 1772376250429,
       "tag": "0003_daily_big_bertha",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1772437607960,
+      "tag": "0004_handy_tombstone",
+      "breakpoints": true
     }
   ]
 }
