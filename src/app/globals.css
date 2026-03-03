@@ -7,6 +7,8 @@
 /* Stripe/Notion-inspired Professional Color Palette */
 :root {
   --radius: 0.375rem;
+  --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 200ms;
   
   /* Core neutrals - clean grayscale like Notion */
   --background: #ffffff;

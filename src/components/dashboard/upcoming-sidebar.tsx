@@ -4,18 +4,20 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { formatRM, formatRelativeDate, formatShortDate } from "@/lib/format";
 import type { Item, Occurrence } from "@/lib/domain/types";
-import { Wallet, Clock, CreditCard, Package } from "lucide-react";
+import { Wallet, Clock, CreditCard, Package, TrendingUp, TrendingDown } from "lucide-react";
 import { BrandIcon } from "@/components/dashboard/brand-icon";
 import { CATEGORY_OPTIONS } from "@/lib/constants";
 
 interface UpcomingSidebarProps {
   monthlyTotal: number;
+  previousMonthTotal: number;
   occurrences: Occurrence[];
   itemsById: Record<string, Item>;
 }
 
 export function UpcomingSidebar({
   monthlyTotal,
+  previousMonthTotal,
   occurrences,
   itemsById,
 }: UpcomingSidebarProps) {
@@ -39,9 +41,38 @@ export function UpcomingSidebar({
               <Wallet className="h-4 w-4 text-foreground" />
             </div>
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Due This Month
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Due This Month
+                </p>
+                {(() => {
+                  if (previousMonthTotal === 0 && monthlyTotal === 0) return null;
+                  if (previousMonthTotal === 0) {
+                    return (
+                      <Badge variant="secondary" className="text-[10px] font-normal">
+                        New
+                      </Badge>
+                    );
+                  }
+                  const pctChange = ((monthlyTotal - previousMonthTotal) / previousMonthTotal) * 100;
+                  const isUp = pctChange > 0;
+                  return (
+                    <Badge
+                      variant="secondary"
+                      className={`gap-0.5 text-[10px] font-normal ${
+                        isUp ? "text-red-500" : "text-green-600"
+                      }`}
+                    >
+                      {isUp ? (
+                        <TrendingUp className="h-3 w-3" />
+                      ) : (
+                        <TrendingDown className="h-3 w-3" />
+                      )}
+                      {Math.abs(pctChange).toFixed(0)}%
+                    </Badge>
+                  );
+                })()}
+              </div>
               <p className="text-2xl font-semibold tabular-nums tracking-tight">
                 {formatRM(monthlyTotal)}
               </p>

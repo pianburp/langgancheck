@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { requireAuth } from "@/lib/session";
+import { requireAuth } from "@/lib/auth/session";
 import * as itemService from "@/lib/services/item.service";
 import type { Item } from "@/lib/domain/types";
 

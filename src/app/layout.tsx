@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { getSession } from "@/lib/session";
+import { getSession } from "@/lib/auth/session";
 import { Navbar } from "@/components/layout/navbar";
 import { OneTapPrompt } from "@/components/auth/auth-button";
 import { ThemeTogglerButton } from "@/components/animate-ui/components/buttons/theme-toggler";

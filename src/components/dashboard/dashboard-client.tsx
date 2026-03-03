@@ -1,16 +1,17 @@
 "use client";
 
 import { useMemo, useState, useCallback } from "react";
-import { authClient } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth/auth-client";
 import { CalendarView } from "@/components/dashboard/calendar-view";
 import { DayDrawer } from "@/components/dashboard/day-drawer";
 import { ItemForm } from "@/components/dashboard/item-form";
 import { UpcomingSidebar } from "@/components/dashboard/upcoming-sidebar";
+import { AnalyticsBento } from "@/components/dashboard/analytics-bento";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 import { getOccurrencesForMonth } from "@/lib/domain/schedule";
-import { upsertItem, markItemPaid, deleteItem } from "@/actions";
+import { upsertItem, markItemPaid, deleteItem, setBudget } from "@/app/actions";
 import { formatRM } from "@/lib/format";
 
 import type { Item } from "@/lib/domain/types";
@@ -24,13 +25,16 @@ import {
 interface DashboardClientProps {
   isAuthenticated: boolean;
   initialItems?: Item[];
+  initialBudget?: number | null;
 }
 
 export function DashboardClient({
   isAuthenticated,
   initialItems = [],
+  initialBudget = null,
 }: DashboardClientProps) {
   const [items, setItems] = useState<Item[]>(initialItems);
+  const [budget, setBudgetState] = useState<number | null>(initialBudget);
   const [monthDate, setMonthDate] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -67,6 +71,19 @@ export function DashboardClient({
     [occurrences],
   );
 
+  const previousMonthTotal = useMemo(() => {
+    const d = new Date(monthDate);
+    d.setMonth(d.getMonth() - 1);
+    const prevOccurrences = getOccurrencesForMonth(
+      items,
+      d.getFullYear(),
+      d.getMonth(),
+    );
+    return prevOccurrences
+      .filter((o) => o.status !== "paid")
+      .reduce((acc, curr) => acc + curr.amount, 0);
+  }, [items, monthDate]);
+
   const overdueInfo = useMemo(() => {
     const missed = occurrences.filter((o) => o.status === "missed");
     return {
@@ -91,6 +108,23 @@ export function DashboardClient({
     setFormNonce((n) => n + 1);
     setFormOpen(true);
   }, [isAuthenticated]);
+
+  const onSetBudget = useCallback(
+    async (amount: number | null) => {
+      if (!isAuthenticated) {
+        signInWithGoogle();
+        return;
+      }
+      const prev = budget;
+      setBudgetState(amount);
+      try {
+        await setBudget(amount);
+      } catch {
+        setBudgetState(prev);
+      }
+    },
+    [isAuthenticated, budget],
+  );
 
   const onSave = useCallback(
     async (item: Item) => {
@@ -238,10 +272,19 @@ export function DashboardClient({
         />
         <UpcomingSidebar
           monthlyTotal={monthlyTotal}
+          previousMonthTotal={previousMonthTotal}
           occurrences={occurrences}
           itemsById={itemsById}
         />
       </div>
+      <AnalyticsBento
+        items={items}
+        occurrences={occurrences}
+        itemsById={itemsById}
+        budget={budget}
+        onSetBudget={onSetBudget}
+        monthDate={monthDate}
+      />
 
 
       {/* Modals */}

@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { authClient } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth/auth-client";
 import { AuthButton } from "@/components/auth/auth-button";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,7 +20,82 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { LogOut, User, ChevronDown, Coffee, QrCode } from "lucide-react";
+import { LogOut, User, ChevronDown } from "lucide-react";
+import { motion } from "motion/react";
+
+const AnimatedCoffee = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props}
+  >
+    <path d="M17 8h1a4 4 0 1 1 0 8h-1" />
+    <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z" />
+    <motion.path
+      d="M6 5 C 5 4, 7 3, 6 2"
+      animate={{
+        y: [0, -1, 0],
+        opacity: [0.6, 1, 0.6],
+        d: ["M6 5 C 5 4, 7 3, 6 2", "M6 5 C 7 4, 5 3, 6 2", "M6 5 C 5 4, 7 3, 6 2"]
+      }}
+      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+    />
+    <motion.path
+      d="M10 5 C 9 4, 11 3, 10 2"
+      animate={{
+        y: [0, -1, 0],
+        opacity: [0.6, 1, 0.6],
+        d: ["M10 5 C 9 4, 11 3, 10 2", "M10 5 C 11 4, 9 3, 10 2", "M10 5 C 9 4, 11 3, 10 2"]
+      }}
+      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.6 }}
+    />
+    <motion.path
+      d="M14 5 C 13 4, 15 3, 14 2"
+      animate={{
+        y: [0, -1, 0],
+        opacity: [0.6, 1, 0.6],
+        d: ["M14 5 C 13 4, 15 3, 14 2", "M14 5 C 15 4, 13 3, 14 2", "M14 5 C 13 4, 15 3, 14 2"]
+      }}
+      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 1.2 }}
+    />
+  </svg>
+);
+
+const AnimatedQrCode = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props}
+  >
+    <rect x="3" y="3" width="5" height="5" rx="1" />
+    <rect x="16" y="3" width="5" height="5" rx="1" />
+    <rect x="3" y="16" width="5" height="5" rx="1" />
+    <path d="M21 16h-3a2 2 0 0 0-2 2v3" />
+
+    <motion.path d="M21 21v.01" animate={{ opacity: [1, 0, 1] }} transition={{ duration: 1.5, repeat: Infinity, delay: 0.2 }} />
+    <motion.path d="M12 7v3a2 2 0 0 1-2 2H7" animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 2, repeat: Infinity, delay: 0.5 }} />
+    <motion.path d="M3 12h.01" animate={{ opacity: [1, 0, 1] }} transition={{ duration: 1.2, repeat: Infinity, delay: 0.8 }} />
+    <motion.path d="M12 3h.01" animate={{ opacity: [1, 0, 1] }} transition={{ duration: 1.4, repeat: Infinity, delay: 0.1 }} />
+    <motion.path d="M12 16v.01" animate={{ opacity: [1, 0, 1] }} transition={{ duration: 1.6, repeat: Infinity, delay: 0.4 }} />
+    <motion.path d="M16 12h1" animate={{ opacity: [1, 0, 1] }} transition={{ duration: 1.3, repeat: Infinity, delay: 0.7 }} />
+    <motion.path d="M21 12v.01" animate={{ opacity: [1, 0, 1] }} transition={{ duration: 1.5, repeat: Infinity, delay: 0.3 }} />
+    <motion.path d="M12 21v-1" animate={{ opacity: [1, 0, 1] }} transition={{ duration: 1.7, repeat: Infinity, delay: 0.9 }} />
+  </svg>
+);
 
 interface NavbarProps {
   isAuthenticated: boolean;
@@ -30,7 +104,6 @@ interface NavbarProps {
 }
 
 export function Navbar({ isAuthenticated, email, avatarUrl }: NavbarProps) {
-  const router = useRouter();
   const [qrOpen, setQrOpen] = useState(false);
 
   const handleLogout = async () => {
@@ -85,8 +158,8 @@ export function Navbar({ isAuthenticated, email, avatarUrl }: NavbarProps) {
                       rel="noopener noreferrer"
                       id="bmc-link"
                     >
-                      <Coffee className="h-4 w-4" />
-                      Buy me a teh tarik! 
+                      <AnimatedCoffee className="h-4 w-4" />
+                      Buy me a teh tarik!
                     </a>
                   </DropdownMenuItem>
                   <DropdownMenuItem
@@ -94,8 +167,8 @@ export function Navbar({ isAuthenticated, email, avatarUrl }: NavbarProps) {
                     onSelect={() => setQrOpen(true)}
                     id="duitnow-qr-trigger"
                   >
-                    <QrCode className="h-4 w-4" />
-                    DuitNow QR 
+                    <AnimatedQrCode className="h-4 w-4" />
+                    DuitNow QR
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout} className="gap-2 text-destructive focus:text-destructive text-xs">

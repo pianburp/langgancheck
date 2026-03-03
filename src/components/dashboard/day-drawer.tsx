@@ -12,8 +12,9 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatRM } from "@/lib/format";
+import { calculateAnnualSavings } from "@/lib/domain/item";
 import type { Item, Occurrence } from "@/lib/domain/types";
-import { Check, Pencil, Trash2, CreditCard, Package, Calendar } from "lucide-react";
+import { Check, Pencil, Trash2, CreditCard, Package, Calendar, DollarSign } from "lucide-react";
 import { BrandIcon } from "@/components/dashboard/brand-icon";
 import { cn } from "@/lib/utils";
 
@@ -222,7 +223,7 @@ export function DayDrawer({
         )}
       </SheetContent>
 
-      {/* Delete confirmation dialog */}
+      {/* Delete confirmation dialog with savings projection */}
       <Dialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
@@ -231,12 +232,38 @@ export function DayDrawer({
               This will permanently remove this item and all its payment history. This cannot be undone.
             </DialogDescription>
           </DialogHeader>
+
+          {/* How Much Saved — savings projection */}
+          {deleteTarget && (() => {
+            const { annual, monthly } = calculateAnnualSavings(deleteTarget);
+            if (annual <= 0) return null;
+            return (
+              <div className="rounded-md border border-green-200 bg-green-50 p-3 dark:border-green-900 dark:bg-green-950/40">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-green-600" />
+                  <p className="text-sm font-medium text-green-700 dark:text-green-400">
+                    Potential Savings
+                  </p>
+                </div>
+                <p className="mt-1.5 text-sm text-green-700 dark:text-green-300">
+                  By canceling <strong>{deleteTarget.name}</strong>, you could save
+                  <strong> {formatRM(annual)}</strong> a year!
+                  {monthly > 0 && (
+                    <span className="text-green-600 dark:text-green-400">
+                      {" "}({formatRM(monthly)}/month)
+                    </span>
+                  )}
+                </p>
+              </div>
+            );
+          })()}
+
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" size="sm" onClick={() => setDeleteTarget(null)}>
               Cancel
             </Button>
             <Button variant="destructive" size="sm" onClick={handleConfirmDelete}>
-              Delete
+              Yes, delete
             </Button>
           </div>
         </DialogContent>

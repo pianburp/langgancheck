@@ -1,4 +1,5 @@
 import type { Item } from "@/lib/domain/types";
+import { BILLING_CYCLE_YEARLY_MULTIPLIER } from "@/lib/constants";
 
 /** Row shape returned by Drizzle for the `item` table. */
 export type ItemRow = {
@@ -73,5 +74,27 @@ export function markSubscriptionPaid(
   const paidDates = item.paidDates as string[];
   if (paidDates.includes(date)) return null;
   return { paidDates: [...paidDates, date] };
+}
+
+/**
+ * Calculate the annual savings if the user were to cancel an item.
+ * For BNPL items: remaining installments × amount.
+ * For subscriptions: yearly frequency × amount.
+ */
+export function calculateAnnualSavings(item: Item): {
+  monthly: number;
+  annual: number;
+} {
+  if (item.type === "bnpl") {
+    const remaining = (item.totalInstallments ?? 0) - item.installmentsPaid;
+    const total = Math.max(0, remaining) * item.amount;
+    // Approximate monthly by dividing remaining across 12
+    return { monthly: total / 12, annual: total };
+  }
+
+  const multiplier = BILLING_CYCLE_YEARLY_MULTIPLIER[item.billingCycle];
+  const annual = item.amount * multiplier;
+  const monthly = annual / 12;
+  return { monthly, annual };
 }
 

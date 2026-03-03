@@ -134,23 +134,13 @@ export function ItemForm({ open, onClose, onSave, editItem }: ItemFormProps) {
     return searchRecognizedSubscriptions(trimmedName, 6);
   }, [type, trimmedName]);
 
-  useEffect(() => {
+  const billingDayError = useMemo(() => {
     const value = draft.billingDay.trim();
-    if (!value) {
-      setErrors((prev) => ({ ...prev, billingDay: "Billing day is required." }));
-      return;
-    }
-
+    if (!value) return "Billing day is required.";
     const parsed = Number(value);
-    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 31) {
-      setErrors((prev) => ({
-        ...prev,
-        billingDay: "Billing day must be a whole number between 1 and 31.",
-      }));
-      return;
-    }
-
-    setErrors((prev) => ({ ...prev, billingDay: undefined }));
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 31)
+      return "Billing day must be a whole number between 1 and 31.";
+    return undefined;
   }, [draft.billingDay]);
 
   const handleSubmit = () => {
@@ -381,10 +371,10 @@ export function ItemForm({ open, onClose, onSave, editItem }: ItemFormProps) {
                   onChange={(e) => {
                     setDraft((prev) => ({ ...prev, billingDay: e.target.value }));
                   }}
-                  aria-invalid={Boolean(errors.billingDay)}
+                  aria-invalid={Boolean(billingDayError ?? errors.billingDay)}
                 />
-                {errors.billingDay && (
-                  <p className="text-xs text-destructive">{errors.billingDay}</p>
+                {(billingDayError ?? errors.billingDay) && (
+                  <p className="text-xs text-destructive">{billingDayError ?? errors.billingDay}</p>
                 )}
               </div>
             </div>
