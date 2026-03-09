@@ -116,7 +116,7 @@ export function Navbar({ isAuthenticated, email, avatarUrl }: NavbarProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <header className="sticky top-0 z-40 w-full border-b border-white/20 bg-white/10 shadow-[0_8px_32px_rgba(15,23,42,0.14)] backdrop-blur-xl supports-[backdrop-filter]:bg-white/10 dark:border-white/10 dark:bg-slate-900/35">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/" className="flex items-center gap-2">
             <span className="font-semibold tracking-tight text-xl">LangganCheck</span>
@@ -126,7 +126,10 @@ export function Navbar({ isAuthenticated, email, avatarUrl }: NavbarProps) {
             {isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild id="user-menu-trigger">
-                  <Button variant="ghost" className="gap-2 px-2 h-8">
+                  <Button
+                    variant="ghost"
+                    className="h-8 gap-2 border border-transparent bg-white/20 px-2 backdrop-blur-sm transition-colors hover:border-white/25 hover:bg-white/30 dark:bg-white/10 dark:hover:bg-white/15"
+                  >
                     <Avatar className="h-6 w-6">
                       {avatarUrl && (
                         <AvatarImage

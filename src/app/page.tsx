@@ -1,4 +1,5 @@
 import { DashboardClient } from "@/components/dashboard/dashboard-client";
+import { DemoOne } from "@/components/ui/demo";
 import { getSession } from "@/lib/auth/session";
 import { getDashboardData } from "@/actions";
 
@@ -12,6 +13,10 @@ export default async function Home() {
   const initialDashboardData = isAuthenticated
     ? await getDashboardData(initialYear, initialMonth)
     : null;
+
+  if (!isAuthenticated) {
+    return <DemoOne />;
+  }
 
   return (
     <DashboardClient
