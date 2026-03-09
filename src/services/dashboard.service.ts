@@ -8,8 +8,8 @@ import {
 import { getOccurrencesForMonth } from "@/domain/schedule";
 import type { BudgetStatus, DashboardData } from "@/domain/dashboard";
 import type { Occurrence } from "@/domain/types";
-import * as userRepo from "@/lib/repositories/user.repository";
-import { getItemsByUserId } from "@/lib/services/item.service";
+import * as userRepo from "@/repositories/user.repository";
+import { getItemsByUserId } from "@/services/item.service";
 
 function sumUnpaid(occurrences: Occurrence[]): number {
   return occurrences

@@ -1,4 +1,4 @@
-import * as userRepo from "@/lib/repositories/user.repository";
+import * as userRepo from "@/repositories/user.repository";
 
 export async function getBudget(userId: string): Promise<number | null> {
   const settings = await userRepo.getUserSettings(userId);

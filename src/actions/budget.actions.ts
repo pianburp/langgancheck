@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { requireAuth } from "@/lib/auth/session";
 import { rateLimit } from "@/lib/infra/rate-limit";
-import * as userService from "@/lib/services/user.service";
+import * as userService from "@/services/user.service";
 
 export async function getBudget(): Promise<number | null> {
   const session = await requireAuth();

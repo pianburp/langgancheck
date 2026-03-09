@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { requireAuth } from "@/lib/auth/session";
 import { rateLimit } from "@/lib/infra/rate-limit";
-import * as itemService from "@/lib/services/item.service";
+import * as itemService from "@/services/item.service";
 import { suggestCategoryForItem } from "@/domain/brandfetch";
 import { toLocalDateKey } from "@/lib/utils/date";
 import type { Item } from "@/domain/types";

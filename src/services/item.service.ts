@@ -1,4 +1,4 @@
-import * as itemRepo from "@/lib/repositories/item.repository";
+import * as itemRepo from "@/repositories/item.repository";
 import {
   toItem,
   markBnplPaid,
