@@ -37,7 +37,12 @@ export default async function RootLayout({
               <main className="flex-1">{children}</main>
               <footer className="flex items-center justify-between w-full text-sm text-muted-foreground py-4 px-4">
                 <div className="flex items-center gap-2">
-                  <p>Contact me! fiansuf@gmail.com</p>
+                  <p>
+                    Contact me!{" "}
+                    <a href="mailto:fiansuf@gmail.com" className="hover:underline">
+                      fiansuf@gmail.com
+                    </a>
+                  </p>
                   <CopyButton
                     variant="ghost"
                     size="xs"
